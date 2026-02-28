@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useSignIn } from "@clerk/nextjs";
 import { ArrowLeft, Check, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ export default function RegistrationPage() {
     const totalSteps = 7;
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+    const { signIn, isLoaded } = useSignIn();
 
     const sections = [
         { label: "Identity", steps: [1] },
@@ -41,17 +43,20 @@ export default function RegistrationPage() {
 
     const currentSectionIndex = sections.findIndex((s) => s.steps.includes(step));
 
-    const handleMockRegistration = async () => {
+    const handleGoogleRegistration = async () => {
+        if (!isLoaded) return;
         setLoading(true);
         try {
-            await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate mock API
-            toast.success("Registration complete!");
-            // mock onComplete behavior
-            console.log("Registered:", { ...formData, id: "mock-id", email: "volunteer@navgurukul.org" });
-            router.push("/dashboard");
+            // Save their selections locally so we can push them post-authentication
+            sessionStorage.setItem("pendingRegistrationData", JSON.stringify(formData));
+
+            await signIn.authenticateWithRedirect({
+                strategy: "oauth_google",
+                redirectUrl: "/sso-callback",
+                redirectUrlComplete: "/register/complete",
+            });
         } catch (err: any) {
             toast.error(`Registration Error: ${err.message}`);
-        } finally {
             setLoading(false);
         }
     };
@@ -465,8 +470,8 @@ export default function RegistrationPage() {
                             </div>
 
                             <Button
-                                onClick={handleMockRegistration}
-                                disabled={!formData.inclusionAgreed || loading}
+                                onClick={handleGoogleRegistration}
+                                disabled={!formData.inclusionAgreed || loading || !isLoaded}
                                 size="lg"
                                 variant="outline"
                                 className="w-full rounded-xl font-bold py-6 text-base bg-white text-black hover:bg-slate-50 dark:bg-white dark:text-black dark:hover:bg-gray-100"

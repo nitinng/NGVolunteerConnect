@@ -15,12 +15,18 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useSidebar } from "@/components/ui/sidebar"
 
+import { ModeToggle } from "@/components/mode-toggle"
+
 export function SiteHeader({
   isTrueAdmin,
-  activeRole
+  activeRole,
+  baseRole,
+  volunteerEnabled
 }: {
   isTrueAdmin?: boolean
   activeRole?: string
+  baseRole?: string
+  volunteerEnabled?: boolean
 }) {
   const { toggleSidebar } = useSidebar()
   const pathname = usePathname()
@@ -53,7 +59,15 @@ export function SiteHeader({
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-        <RoleSwitcher isAdmin={isTrueAdmin} activeRole={activeRole} />
+        <div className="ml-auto flex items-center gap-2">
+          <ModeToggle />
+          <RoleSwitcher
+            isAdmin={isTrueAdmin}
+            activeRole={activeRole}
+            baseRole={baseRole}
+            volunteerEnabled={volunteerEnabled}
+          />
+        </div>
       </div>
     </header>
   )

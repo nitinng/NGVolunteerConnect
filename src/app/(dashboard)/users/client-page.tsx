@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Plus, MoreHorizontal, Trash, Shield, ShieldAlert, ShieldCheck, Users, Activity, UserMinus, UserX } from "lucide-react";
+import { Loader2, Plus, MoreHorizontal, Trash, Shield, ShieldAlert, ShieldCheck, Users, Activity, UserMinus, UserX, UserCog } from "lucide-react";
 import {
     XAxis,
     CartesianGrid,
@@ -56,7 +56,7 @@ import {
     type ChartConfig,
 } from "@/components/ui/chart";
 
-import { deleteUserAction, updateUserRoleAction, inviteUserAction } from "./actions";
+import { deleteUserAction, updateUserRoleAction, inviteUserAction, toggleVolunteeringProfileAction, toggleUserManagementAction } from "./actions";
 
 interface ReadUser {
     id: string;
@@ -68,17 +68,61 @@ interface ReadUser {
     role: string;
     imageUrl: string;
     isMaster?: boolean;
+    volunteerEnabled?: boolean;
+    userManagementEnabled?: boolean;
 }
 
 const ROLES = ["Admin", "Program", "Operations", "Volunteer"];
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
-export function UsersClient({ initialUsers }: { initialUsers: ReadUser[] }) {
+export function UsersClient({ initialUsers, currentUserId, actorRole, isRootActor }: {
+    initialUsers: ReadUser[];
+    currentUserId: string;
+    actorRole: string;
+    isRootActor: boolean;
+}) {
     const [users, setUsers] = useState<ReadUser[]>(initialUsers);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [inviteEmail, setInviteEmail] = useState("");
     const [inviteRole, setInviteRole] = useState("Volunteer");
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
+
+    // ── Role lists filtered by actor permissions ──────────────────────────
+    // Roles the actor can assign to OTHER users
+    const assignableRoles = isRootActor
+        ? ["Admin", "Program", "Operations", "Volunteer"]
+        : actorRole === "Admin"
+            ? ["Program", "Operations", "Volunteer"]  // regular admins cannot touch Admin tier
+            : actorRole === "Program"
+                ? ["Program", "Operations"]  // Program can only lift Volunteers up
+                : [];  // Operations / Volunteer: none
+
+    // Roles available in the invite dialog
+    const invitableRoles = isRootActor
+        ? ["Admin", "Program", "Operations", "Volunteer"]
+        : actorRole === "Admin"
+            ? ["Program", "Operations", "Volunteer"]
+            : actorRole === "Program"
+                ? ["Volunteer"]
+                : [];
+
+    /** Whether the actor can change this specific target user's role. */
+    const canChangeRole = (target: ReadUser) => {
+        if (target.isMaster) return false;
+        if (assignableRoles.length === 0) return false;
+        if (actorRole === "Program" && target.role !== "Volunteer") return false; // Program can only touch Volunteers
+        if (!isRootActor && actorRole === "Admin" && target.role === "Admin") return false; // regular admins can't touch other admins
+        return true;
+    };
+
+    /** Whether the actor can delete this target user. */
+    const canDelete = (target: ReadUser) => {
+        if (target.isMaster) return false;        // root admin protected
+        if (target.id === currentUserId) return false; // no self-delete
+        if (isRootActor) return true;
+        if (actorRole === "Admin" && target.role !== "Admin") return true; // regular admin can delete non-admins
+        return false;
+    };
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -190,6 +234,30 @@ export function UsersClient({ initialUsers }: { initialUsers: ReadUser[] }) {
             setUsers(users.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
         } else {
             toast.error(res.error || "Failed to update role");
+        }
+        setLoadingAction(null);
+    };
+
+    const handleToggleVolunteer = async (userId: string, currentStatus: boolean) => {
+        setLoadingAction(`vol-${userId}`);
+        const res = await toggleVolunteeringProfileAction(userId, !currentStatus);
+        if (res.success) {
+            toast.success(`Volunteer profile ${!currentStatus ? 'enabled' : 'disabled'}!`);
+            setUsers(users.map((u) => (u.id === userId ? { ...u, volunteerEnabled: !currentStatus } : u)));
+        } else {
+            toast.error(res.error || "Failed to update profile setting");
+        }
+        setLoadingAction(null);
+    };
+
+    const handleToggleUserManagement = async (userId: string, currentStatus: boolean) => {
+        setLoadingAction(`um-${userId}`);
+        const res = await toggleUserManagementAction(userId, !currentStatus);
+        if (res.success) {
+            toast.success(`User management ${!currentStatus ? 'enabled' : 'disabled'}!`);
+            setUsers(users.map((u) => (u.id === userId ? { ...u, userManagementEnabled: !currentStatus } : u)));
+        } else {
+            toast.error(res.error || "Failed to update user management setting");
         }
         setLoadingAction(null);
     };
@@ -335,7 +403,7 @@ export function UsersClient({ initialUsers }: { initialUsers: ReadUser[] }) {
                             <DialogHeader>
                                 <DialogTitle>Invite external user</DialogTitle>
                                 <DialogDescription>
-                                    Send an email invitation securely via Clerk to grant dashboard access with a specific role.
+                                    Send an email invitation to grant dashboard access with a specific role.
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
@@ -355,7 +423,7 @@ export function UsersClient({ initialUsers }: { initialUsers: ReadUser[] }) {
                                             <SelectValue placeholder="Select a role" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {ROLES.map((r) => (
+                                            {invitableRoles.map((r) => (
                                                 <SelectItem key={r} value={r}>{r}</SelectItem>
                                             ))}
                                         </SelectContent>
@@ -436,31 +504,66 @@ export function UsersClient({ initialUsers }: { initialUsers: ReadUser[] }) {
 
                                                 {user.isMaster ? (
                                                     <div className="px-2 py-4 text-xs text-muted-foreground whitespace-normal w-48 text-center bg-muted/50 rounded-sm italic">
-                                                        Master Admin roles are strictly immutable.
+                                                        Root Admin · roles are immutable.
                                                     </div>
                                                 ) : (
                                                     <>
-                                                        <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Change Role</DropdownMenuLabel>
-                                                        {ROLES.map((role) => (
-                                                            <DropdownMenuItem
-                                                                key={role}
-                                                                disabled={user.role === role}
-                                                                onClick={() => handleRoleChange(user.id, role)}
-                                                                className="flex items-center gap-2 cursor-pointer"
-                                                            >
-                                                                {role === 'Admin' ? <ShieldAlert className="h-4 w-4 text-rose-500" /> : <ShieldCheck className="h-4 w-4 text-emerald-500" />}
-                                                                Make {role}
-                                                            </DropdownMenuItem>
-                                                        ))}
+                                                        {canChangeRole(user) && (
+                                                            <>
+                                                                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Change Role</DropdownMenuLabel>
+                                                                {assignableRoles.map((role) => (
+                                                                    <DropdownMenuItem
+                                                                        key={role}
+                                                                        disabled={user.role === role}
+                                                                        onClick={() => handleRoleChange(user.id, role)}
+                                                                        className="flex items-center gap-2 cursor-pointer"
+                                                                    >
+                                                                        {role === 'Admin' ? <ShieldAlert className="h-4 w-4 text-rose-500" /> : <ShieldCheck className="h-4 w-4 text-emerald-500" />}
+                                                                        Make {role}
+                                                                    </DropdownMenuItem>
+                                                                ))}
+                                                            </>
+                                                        )}
 
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem
-                                                            className="text-destructive focus:text-destructive cursor-pointer flex items-center gap-2"
-                                                            onClick={() => handleDelete(user.id)}
-                                                        >
-                                                            <Trash className="h-4 w-4" />
-                                                            Delete User
-                                                        </DropdownMenuItem>
+                                                        {['Program', 'Operations'].includes(user.role) && (isRootActor || actorRole === 'Admin') && (
+                                                            <>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem
+                                                                    onClick={() => handleToggleVolunteer(user.id, !!user.volunteerEnabled)}
+                                                                    className="flex items-center gap-2 cursor-pointer"
+                                                                >
+                                                                    {user.volunteerEnabled ? <UserMinus className="h-4 w-4" /> : <Users className="h-4 w-4" />}
+                                                                    {user.volunteerEnabled ? 'Disable Volunteer Profile' : 'Enable Volunteer Profile'}
+                                                                </DropdownMenuItem>
+
+                                                                <DropdownMenuItem
+                                                                    onClick={() => handleToggleUserManagement(user.id, !!user.userManagementEnabled)}
+                                                                    className="flex items-center gap-2 cursor-pointer"
+                                                                >
+                                                                    <UserCog className="h-4 w-4" />
+                                                                    {user.userManagementEnabled ? 'Disable User Management' : 'Enable User Management'}
+                                                                </DropdownMenuItem>
+                                                            </>
+                                                        )}
+
+                                                        {canDelete(user) && (
+                                                            <>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem
+                                                                    className="text-destructive focus:text-destructive cursor-pointer flex items-center gap-2"
+                                                                    onClick={() => handleDelete(user.id)}
+                                                                >
+                                                                    <Trash className="h-4 w-4" />
+                                                                    Delete User
+                                                                </DropdownMenuItem>
+                                                            </>
+                                                        )}
+
+                                                        {!canChangeRole(user) && !canDelete(user) && !['Program', 'Operations'].includes(user.role) && (
+                                                            <div className="px-2 py-3 text-xs text-muted-foreground text-center italic">
+                                                                No actions available.
+                                                            </div>
+                                                        )}
                                                     </>
                                                 )}
                                             </DropdownMenuContent>

@@ -18,7 +18,8 @@ import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
-import { useUser } from "@clerk/nextjs"
+import { useUser } from "@/hooks/use-auth"
+import { BookOpenCheck } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -37,54 +38,16 @@ const data = {
   },
   navMain: [
     {
-      title: "Playground",
-      url: "#",
-      icon: SquareTerminal,
-      isActive: true,
-      items: [
-        {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
-    },
-    {
       title: "Users",
       url: "/users",
       icon: Bot,
+      isActive: false,
       items: [
         {
           title: "Manage Users",
           url: "/users",
         }
       ]
-    },
-    {
-      title: "Models",
-      url: "#",
-      icon: Bot,
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
     },
     {
       title: "Documentation",
@@ -105,29 +68,6 @@ const data = {
         },
         {
           title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
           url: "#",
         },
       ],
@@ -164,7 +104,9 @@ const data = {
   ],
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+import { UserRole } from "@/lib/roles"
+
+export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps<typeof Sidebar> & { role?: UserRole, devOverride?: string }) {
   const { user } = useUser()
   const userData = {
     name: user?.fullName || "Welcome",
@@ -172,14 +114,48 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     avatar: user?.imageUrl || "",
   }
 
+  // Use the strictly server-resolved role to prevent Hydration mismatches
+  const activeRole = devOverride ? (role || 'Volunteer') : (role || 'Volunteer');
+  const isVolunteer = activeRole === 'Volunteer';
+
+  let dynamicNavMain = [...data.navMain];
+
+  const canSeeUsers = activeRole !== 'Volunteer';
+
+  if (!canSeeUsers) {
+    dynamicNavMain = dynamicNavMain.filter(n => n.title !== "Users");
+  }
+
+  // Onboarding should be at the top for everyone, but with different sub-items
+  dynamicNavMain.unshift({
+    title: "Onboarding Hub",
+    url: "/onboarding",
+    icon: BookOpenCheck,
+    isActive: true,
+    items: isVolunteer ? [
+      {
+        title: "View Tasks & Info",
+        url: "/onboarding"
+      }
+    ] : [
+      {
+        title: "View Tasks & Info",
+        url: "/onboarding"
+      },
+      {
+        title: "Skills Management",
+        url: "/skills"
+      }
+    ]
+  });
+
   return (
     <Sidebar
       className="top-(--header-height) h-[calc(100svh-var(--header-height))]!"
       {...props}
     >
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+        <NavMain items={dynamicNavMain} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

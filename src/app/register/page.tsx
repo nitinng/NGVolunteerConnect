@@ -1,16 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import { useSignIn } from "@clerk/nextjs";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useSignUp, useUser } from "@/hooks/use-auth";
 import { ArrowLeft, Check, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Toaster } from "@/components/ui/sonner";
 
-export default function RegistrationPage() {
+function RegistrationForm() {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
         fullName: "",
@@ -32,7 +32,20 @@ export default function RegistrationPage() {
     const totalSteps = 7;
     const [loading, setLoading] = useState(false);
     const router = useRouter();
-    const { signIn, isLoaded } = useSignIn();
+    const searchParams = useSearchParams();
+    const { signUp, isLoaded: signUpLoaded } = useSignUp();
+    const { user, isLoaded: userLoaded } = useUser();
+    const isLoaded = signUpLoaded && userLoaded;
+
+    // Show warning if redirected here because user tried to sign in without an account
+    useEffect(() => {
+        if (searchParams.get("reason") === "no_account") {
+            toast.warning(
+                "No account found for that Google account. Please complete registration below.",
+                { duration: 6000, id: "no-account-warning" }
+            );
+        }
+    }, [searchParams]);
 
     const sections = [
         { label: "Identity", steps: [1] },
@@ -44,17 +57,24 @@ export default function RegistrationPage() {
     const currentSectionIndex = sections.findIndex((s) => s.steps.includes(step));
 
     const handleGoogleRegistration = async () => {
-        if (!isLoaded) return;
         setLoading(true);
         try {
-            // Save their selections locally so we can push them post-authentication
-            sessionStorage.setItem("pendingRegistrationData", JSON.stringify(formData));
+            // Use localStorage (NOT sessionStorage) because OAuth redirects are full-page
+            // navigations that wipe out sessionStorage. localStorage persists across them.
+            localStorage.setItem("pendingRegistrationData", JSON.stringify(formData));
 
-            await signIn.authenticateWithRedirect({
-                strategy: "oauth_google",
-                redirectUrl: "/sso-callback",
-                redirectUrlComplete: "/register/complete",
-            });
+            if (user) {
+                // Already signed in (e.g., returning to finish), skip OAuth and complete directly.
+                router.push("/register/complete");
+            } else {
+                // New user: kick off Google OAuth. The redirect will go:
+                // Google → /auth/callback → /register/complete
+                await signUp!.authenticateWithRedirect({
+                    strategy: "oauth_google",
+                    redirectUrl: "/sso-callback",
+                    redirectUrlComplete: "/register/complete",
+                });
+            }
         } catch (err: any) {
             toast.error(`Registration Error: ${err.message}`);
             setLoading(false);
@@ -105,7 +125,7 @@ export default function RegistrationPage() {
 
     return (
         <div className="min-h-screen w-full bg-slate-50 dark:bg-zinc-950 flex flex-col items-center relative overflow-hidden font-sans selection:bg-primary/20 selection:text-primary">
-            <Toaster position="top-center" />
+            <Toaster />
 
             {/* Background Gradient */}
             <div className="absolute inset-0 pointer-events-none z-0">
@@ -471,13 +491,22 @@ export default function RegistrationPage() {
 
                             <Button
                                 onClick={handleGoogleRegistration}
-                                disabled={!formData.inclusionAgreed || loading || !isLoaded}
+                                disabled={!formData.inclusionAgreed || loading}
                                 size="lg"
                                 variant="outline"
-                                className="w-full rounded-xl font-bold py-6 text-base bg-white text-black hover:bg-slate-50 dark:bg-white dark:text-black dark:hover:bg-gray-100"
+                                className={`w-full rounded-xl font-bold py-6 text-base ${(!formData.inclusionAgreed || loading) ? 'bg-muted text-muted-foreground border-border' : user ? "bg-primary text-primary-foreground hover:bg-primary/90 border-transparent shadow-lg hover:shadow-xl" : "bg-white text-black hover:bg-slate-50 dark:bg-white dark:text-black dark:hover:bg-gray-100 shadow-lg hover:shadow-xl border-slate-200"}`}
                             >
                                 {loading ? (
-                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    <div className="flex items-center gap-3">
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        <span>Redirecting to Google...</span>
+                                    </div>
+                                ) : !formData.inclusionAgreed ? (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                        <span>Accept Shared Values to Continue</span>
+                                    </div>
+                                ) : user ? (
+                                    <span>Complete Registration</span>
                                 ) : (
                                     <div className="flex items-center justify-center gap-2">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-5 h-5">
@@ -490,6 +519,11 @@ export default function RegistrationPage() {
                                     </div>
                                 )}
                             </Button>
+
+                            {/* Clerk mounts its Cloudflare Turnstile bot-check widget here.
+                                Without this anchor it falls back to appending to <body>
+                                which puts it below the page footer, out of view. */}
+                            <div id="clerk-captcha" className="mt-4 flex justify-center" />
                         </div>
                     )}
 
@@ -528,5 +562,17 @@ export default function RegistrationPage() {
                 </p>
             </div>
         </div>
+    );
+}
+
+export default function RegistrationPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex h-screen items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        }>
+            <RegistrationForm />
+        </Suspense>
     );
 }

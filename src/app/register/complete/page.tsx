@@ -12,19 +12,30 @@ export default function CompleteRegistration() {
         let mounted = true;
 
         async function syncData() {
-            const dataStr = sessionStorage.getItem("pendingRegistrationData");
-            if (dataStr) {
-                try {
-                    setStatus("Saving your preferences...");
-                    const data = JSON.parse(dataStr);
-                    await completeRegistration(data);
+            // Use localStorage (NOT sessionStorage) because OAuth causes a full-page navigation
+            // that wipes out sessionStorage before we ever get here.
+            const dataStr = localStorage.getItem("pendingRegistrationData");
 
-                    // Clear the session storage so we don't accidentally run it again
-                    sessionStorage.removeItem("pendingRegistrationData");
-                } catch (e) {
-                    console.error("Failed to sync registration data:", e);
+            // No registration data means this user came via Sign In (not Register).
+            // This happens when an unregistered Google account tries to sign in —
+            // Supabase creates the auth user but we have no form data to save.
+            // Send them back to /register with a warning.
+            if (!dataStr) {
+                if (mounted) {
+                    router.replace("/register?reason=no_account");
                 }
+                return;
             }
+
+            try {
+                setStatus("Saving your preferences...");
+                const data = JSON.parse(dataStr);
+                await completeRegistration(data);
+                localStorage.removeItem("pendingRegistrationData");
+            } catch (e) {
+                console.error("Failed to sync registration data:", e);
+            }
+
             if (mounted) {
                 setStatus("Welcome aboard! Redirecting...");
                 setTimeout(() => {
@@ -48,3 +59,4 @@ export default function CompleteRegistration() {
         </div>
     );
 }
+

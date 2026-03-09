@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useSignIn } from "@clerk/nextjs";
+import { useSignIn } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -66,7 +66,7 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Toaster position="top-center" />
+      <Toaster />
       <Card className="overflow-hidden p-0 border-none shadow-2xl rounded-2xl bg-background">
         <CardContent className="grid p-0 md:grid-cols-2 min-h-[500px]">
           {/* Left Side: Auth Section */}
@@ -112,6 +112,8 @@ export function LoginForm({
                     </div>
                   )}
                 </Button>
+                {/* Specific mount point for Turnstile widget within login card so it doesn't get dumped to body bounds. */}
+                <div id="clerk-captcha" className="mt-4 flex justify-center" />
               </div>
 
               <div className="pt-4 text-xs font-semibold text-center text-muted-foreground uppercase tracking-widest">

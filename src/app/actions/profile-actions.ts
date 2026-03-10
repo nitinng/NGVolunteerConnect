@@ -1,5 +1,5 @@
 "use server";
-import { auth, clerkClient } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-server";
 import { Profile } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
@@ -13,14 +13,12 @@ export async function updateProfile(updates: Partial<Omit<Profile, "id" | "auth_
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
-    // Fetch name + email from Clerk to satisfy NOT NULL constraints
-    const clerk = await clerkClient();
-    const clerkUser = await clerk.users.getUser(userId);
-    const email = clerkUser.emailAddresses[0]?.emailAddress ?? "";
-    const fullName =
-        `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim() || email;
-
     const supabase = createAdminClient();
+
+    // Fetch name + email from Auth to satisfy NOT NULL constraints
+    const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+    const email = user?.email ?? "";
+    const fullName = user?.user_metadata?.full_name || email;
 
     const payload = {
         auth_user_id: userId,

@@ -1,6 +1,6 @@
 "use server";
 
-import { auth, clerkClient } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-server";
 import { calculateImpact, getExperienceBand } from "@/lib/impact-engine";
 import {
@@ -108,11 +108,12 @@ export async function updateMyProfile(updates: Partial<Profile>) {
         throw new Error(error.message);
     }
 
-    // Sync key fields to Clerk public metadata
+    // Sync key fields to Supabase app_metadata
     if (updates.volunteer_type || updates.onboarding_completed !== undefined) {
-        const client = await clerkClient();
-        await client.users.updateUserMetadata(userId, {
-            publicMetadata: {
+        const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+        await supabase.auth.admin.updateUserById(userId, {
+            app_metadata: {
+                ...user?.app_metadata,
                 ...(updates.volunteer_type && { volunteer_type: updates.volunteer_type }),
                 ...(updates.onboarding_completed !== undefined && {
                     onboarding_completed: updates.onboarding_completed,
@@ -141,10 +142,13 @@ export async function setVolunteerType(volunteerType: VolunteerType) {
 
     if (error) throw new Error(error.message);
 
-    // Sync to Clerk
-    const client = await clerkClient();
-    await client.users.updateUserMetadata(userId, {
-        publicMetadata: { volunteer_type: volunteerType },
+    // Sync to Supabase Admin App Metadata
+    const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+    await supabase.auth.admin.updateUserById(userId, {
+        app_metadata: {
+            ...user?.app_metadata,
+            volunteer_type: volunteerType
+        },
     });
 
     return { success: true };

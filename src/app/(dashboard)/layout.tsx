@@ -9,6 +9,7 @@ import { getUserRole, isTrueAdmin } from "@/lib/roles"
 import { cookies } from "next/headers"
 import { auth, currentUser } from "@/lib/auth"
 import { syncProfileToSupabase } from "@/app/actions/supabase-actions"
+import { UserProvider } from "@/contexts/user-context"
 
 export default async function DashboardLayout({
     children,
@@ -44,21 +45,33 @@ export default async function DashboardLayout({
     }
 
     return (
-        <div className="[--header-height:calc(--spacing(14))]">
-            <SidebarProvider className="flex flex-col">
-                <SiteHeader
-                    isTrueAdmin={adminMode}
-                    activeRole={rawDevOverride || "System"}
-                    baseRole={baseRole}
-                    volunteerEnabled={volunteerEnabled}
-                />
-                <div className="flex flex-1">
-                    <AppSidebar role={currentRole} devOverride={rawDevOverride} />
-                    <SidebarInset>
-                        {children}
-                    </SidebarInset>
-                </div>
-            </SidebarProvider>
-        </div>
+        <UserProvider user={user ? {
+            id: user.id,
+            fullName: user.fullName || "",
+            email: user.emailAddresses[0]?.emailAddress || "",
+            imageUrl: user.imageUrl || "",
+            firstName: user.firstName || "",
+            lastName: user.lastName || "",
+            role: baseRole,
+            volunteerEnabled: volunteerEnabled,
+            publicMetadata: user.publicMetadata || {},
+        } : null}>
+            <div className="[--header-height:calc(--spacing(14))]">
+                <SidebarProvider className="flex flex-col">
+                    <SiteHeader
+                        isTrueAdmin={adminMode}
+                        activeRole={rawDevOverride || "System"}
+                        baseRole={baseRole}
+                        volunteerEnabled={volunteerEnabled}
+                    />
+                    <div className="flex flex-1">
+                        <AppSidebar role={currentRole} devOverride={rawDevOverride} />
+                        <SidebarInset>
+                            {children}
+                        </SidebarInset>
+                    </div>
+                </SidebarProvider>
+            </div>
+        </UserProvider>
     )
 }

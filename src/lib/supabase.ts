@@ -103,6 +103,8 @@ export interface Profile {
     // Skills
     primary_skill_category: string | null;
     secondary_skill_category: string | null;
+    primary_skill_subcategories: string[] | null;
+    secondary_skill_subcategories: string[] | null;
 
     // Availability / Commitment
     apply_project: string | null;

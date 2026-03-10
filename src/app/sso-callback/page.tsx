@@ -58,8 +58,7 @@ export default function SSOCallbackPage() {
                         signInForceRedirectUrl="/"
                         signUpForceRedirectUrl="/register/complete"
                     />
-                    {/* Provide a mount point for Clerk's Turnstile CAPTCHA during redirect processing */}
-                    <div id="clerk-captcha" />
+
                 </div>
             </div>
         </div>

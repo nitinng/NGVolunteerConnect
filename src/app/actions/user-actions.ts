@@ -1,12 +1,11 @@
 "use server";
-import { auth, clerkClient } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 
 /**
  * Called by /register/complete after Google OAuth completes.
  * 
- * What goes to Clerk:  role only (fullName is already on the Clerk user from Google)
  * What goes to Supabase: ALL form data collected during registration steps 1–7
  */
 export async function completeRegistration(userData: {
@@ -28,22 +27,24 @@ export async function completeRegistration(userData: {
     const { userId } = await auth();
     if (!userId) return;
 
-    // 1. Set ONLY role in Clerk (fullName is already set by Google OAuth)
-    const client = await clerkClient();
-    await client.users.updateUserMetadata(userId, {
-        publicMetadata: {
-            role: "Volunteer",
-        },
-    });
-
-    // 2. Get the user's email from Clerk to create the Supabase profile
-    const clerkUser = await client.users.getUser(userId);
-    const email = clerkUser.emailAddresses[0]?.emailAddress ?? "";
-    const fullName = userData.fullName ||
-        `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim() ||
-        email;
-
     const supabase = createAdminClient();
+
+    // Get auth user's email and fallback name
+    const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+    const email = user?.email ?? "";
+    const fullName = userData.fullName || user?.user_metadata?.full_name || email;
+
+    // Update the auth user's metadata to include role and full_name
+    await supabase.auth.admin.updateUserById(userId, {
+        app_metadata: {
+            ...user?.app_metadata,
+            role: "Volunteer"
+        },
+        user_metadata: {
+            ...user?.user_metadata,
+            full_name: fullName
+        }
+    });
 
     // 3. Upsert the Supabase profile with ALL registration form data
     const { error } = await supabase

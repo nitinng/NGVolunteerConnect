@@ -15,15 +15,11 @@ import {
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
 import { NavSecondary } from "@/components/nav-secondary"
-import { NavUser } from "@/components/nav-user"
-import { useUser } from "@/hooks/use-auth"
 import { BookOpenCheck } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -107,12 +103,6 @@ const data = {
 import { UserRole } from "@/lib/roles"
 
 export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps<typeof Sidebar> & { role?: UserRole, devOverride?: string }) {
-  const { user } = useUser()
-  const userData = {
-    name: user?.fullName || "Welcome",
-    email: user?.primaryEmailAddress?.emailAddress || "",
-    avatar: user?.imageUrl || "",
-  }
 
   // Use the strictly server-resolved role to prevent Hydration mismatches
   const activeRole = devOverride ? (role || 'Volunteer') : (role || 'Volunteer');
@@ -158,9 +148,6 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
         <NavMain items={dynamicNavMain} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={userData} />
-      </SidebarFooter>
     </Sidebar>
   )
 }

@@ -1,15 +1,21 @@
 "use client";
 
-import { useUser, useClerk } from "@/hooks/use-auth";
+import { useAuthActions } from "@/hooks/use-auth";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
     Loader2, Moon, User, Briefcase, GraduationCap,
     Heart, Calendar, LogOut, Check, MapPin, Phone,
-    Linkedin, FileText
+    Linkedin, FileText, Target
 } from "lucide-react";
 import { updateProfile, getMyProfile } from "@/app/actions/profile-actions";
-import { Profile } from "@/lib/supabase";
+import { Profile, SkillCategory, SkillSubcategory } from "@/lib/supabase";
+import {
+    getSkillCategories,
+    getSkillSubcategories
+} from "@/app/actions/skills-actions";
+import { calculateProfileCompletion } from "@/lib/profile-utils";
+import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,13 +35,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useTheme } from "next-themes";
-
-const SKILL_CATEGORIES = [
-    "Technical",
-    "Non-Technical / Professional",
-    "Creative",
-    "Leadership & Operations",
-];
+import { useUserContext } from "@/contexts/user-context";
 
 const INDUSTRY_VERTICALS = [
     "Software Engineering",
@@ -51,8 +51,8 @@ const INDUSTRY_VERTICALS = [
 ];
 
 export default function ProfileView() {
-    const { user, isLoaded } = useUser();
-    const { signOut } = useClerk();
+    const user = useUserContext();
+    const { signOut } = useAuthActions();
     const { theme, setTheme } = useTheme();
 
     const [isSaving, setIsSaving] = useState(false);
@@ -101,18 +101,42 @@ export default function ProfileView() {
         acknowledgement: false,
     });
 
+    const [selectedPrimarySubSkills, setSelectedPrimarySubSkills] = useState<string[]>([]);
+    const [selectedSecondarySubSkills, setSelectedSecondarySubSkills] = useState<string[]>([]);
+    const [dbCategories, setDbCategories] = useState<SkillCategory[]>([]);
+    const [dbSubcategories, setDbSubcategories] = useState<SkillSubcategory[]>([]);
+
+    // Load skills data and profile
+    useEffect(() => {
+        const loadInitialData = async () => {
+            try {
+                const [cats, subcats] = await Promise.all([
+                    getSkillCategories(),
+                    getSkillSubcategories()
+                ]);
+                setDbCategories(cats);
+                setDbSubcategories(subcats as SkillSubcategory[]);
+            } catch (err) {
+                console.error("Failed to load skills data:", err);
+            }
+        };
+        loadInitialData();
+    }, []);
+
     // Load profile from Supabase on mount
     useEffect(() => {
-        // Not ready yet — wait for useUser to resolve
-        if (!isLoaded) return;
+        console.log("[ProfileView] useEffect triggered. User:", user?.id);
 
         // User is not logged in — stop loading immediately
         if (!user) {
+            console.log("[ProfileView] No user found in context. Stopping load.");
             setIsLoadingProfile(false);
             return;
         }
 
+        console.log("[ProfileView] Fetching profile for:", user.id);
         getMyProfile().then((p) => {
+            console.log("[ProfileView] Profile fetch result:", p ? "Found" : "Not Found");
             if (p) {
                 setProfile(p);
                 setFormData({
@@ -146,15 +170,21 @@ export default function ProfileView() {
                     contact_mode_pref: p.contact_mode ?? "",
                     acknowledgement: p.acknowledgement ?? false,
                 });
+
+                // Load sub-skills from profiles table
+                setSelectedPrimarySubSkills(p.primary_skill_subcategories || []);
+                setSelectedSecondarySubSkills(p.secondary_skill_subcategories || []);
             }
         }).catch((err) => {
             console.error("[ProfileView] Failed to load profile:", err);
+            toast.error("Failed to load profile data.");
         }).finally(() => {
+            console.log("[ProfileView] Load complete.");
             setIsLoadingProfile(false);
         });
-    }, [isLoaded, user]);
+    }, [user]);
 
-    if (!isLoaded || isLoadingProfile) {
+    if (isLoadingProfile) {
         return (
             <div className="flex h-[50vh] items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -171,7 +201,14 @@ export default function ProfileView() {
                 const parts = formData.fullName.trim().split(" ");
                 const firstName = parts[0] || "";
                 const lastName = parts.slice(1).join(" ") || "";
-                await user.update({ firstName, lastName });
+                const fullName = `${firstName} ${lastName}`.trim();
+
+                // Manually update via Supabase since UserContext doesn't have an 'update' method
+                const { createBrowserClient } = await import("@/lib/supabase");
+                const supabase = createBrowserClient();
+                await supabase.auth.updateUser({
+                    data: { full_name: fullName }
+                });
             }
 
             await updateProfile({
@@ -197,13 +234,16 @@ export default function ProfileView() {
                 experience_description: formData.experience_description || null,
                 primary_skill_category: formData.primary_skill_category || null,
                 secondary_skill_category: formData.secondary_skill_category || null,
+                primary_skill_subcategories: selectedPrimarySubSkills.length > 0 ? selectedPrimarySubSkills : null,
+                secondary_skill_subcategories: selectedSecondarySubSkills.length > 0 ? selectedSecondarySubSkills : null,
                 apply_project: formData.apply_project || null,
                 commitment_type: formData.commitment_type || null,
                 hours_per_week: formData.hours_per_week || null,
                 volunteer_mode: formData.volunteer_mode || null,
                 acknowledgement: formData.acknowledgement,
             });
-            toast.success("Profile saved to Supabase ✓");
+
+            toast.success("Profile saved ✓");
         } catch (error: any) {
             toast.error(error.message || "Failed to save profile.");
         } finally {
@@ -228,8 +268,8 @@ export default function ProfileView() {
 
     const typeBadge = profile?.volunteer_type ? volunteerTypeBadge[profile.volunteer_type] : null;
 
-    const isProgramOrOps = ["Program", "Operations"].includes(user.publicMetadata?.role as string);
-    const isVolunteerEnabled = user.publicMetadata?.volunteerEnabled === true;
+    const isProgramOrOps = ["Program", "Operations"].includes(user?.role as string);
+    const isVolunteerEnabled = user?.volunteerEnabled === true;
     const showVolunteerTabs = !isProgramOrOps || isVolunteerEnabled;
 
     return (
@@ -251,7 +291,7 @@ export default function ProfileView() {
                                 </span>
                             )}
                         </div>
-                        <p className="text-sm text-muted-foreground">{user.primaryEmailAddress?.emailAddress}</p>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
                         {profile?.description && (
                             <p className="text-xs text-muted-foreground mt-0.5">{profile.description}</p>
                         )}
@@ -268,7 +308,20 @@ export default function ProfileView() {
                 </div>
             </div>
 
-
+            {/* ── Progress Bar ── */}
+            <div className="space-y-2">
+                <div className="flex justify-between items-center px-1">
+                    <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">Profile Completion</span>
+                    <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                        {calculateProfileCompletion(profile, user?.publicMetadata, dbCategories.map(c => c.key))}%
+                    </span>
+                </div>
+                <Progress
+                    value={calculateProfileCompletion(profile, user?.publicMetadata, dbCategories.map(c => c.key))}
+                    className="h-2"
+                    indicatorClassName="bg-emerald-500"
+                />
+            </div>
 
             {/* ── Tabs ── */}
             <Tabs defaultValue="personal" className="w-full">
@@ -304,7 +357,7 @@ export default function ProfileView() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Email Address</Label>
-                                    <Input disabled value={user.primaryEmailAddress?.emailAddress || ""} className="text-muted-foreground" />
+                                    <Input disabled value={user.email || ""} className="text-muted-foreground" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Phone Number</Label>
@@ -522,32 +575,128 @@ export default function ProfileView() {
                                                 const updates: any = { primary_skill_category: v };
                                                 if (v === formData.secondary_skill_category) updates.secondary_skill_category = "";
                                                 setFormData({ ...formData, ...updates });
+                                                // Clear selected roles when category changes
+                                                setSelectedPrimarySubSkills([]);
                                             }}
                                         >
-                                            <SelectTrigger><SelectValue placeholder="Select primary category" /></SelectTrigger>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select your Primary Skill" />
+                                            </SelectTrigger>
                                             <SelectContent>
-                                                {SKILL_CATEGORIES.map((c) => (
-                                                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                                                {dbCategories.map((c) => (
+                                                    <SelectItem key={c.id} value={c.title}>{c.title}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Secondary Skill Category</Label>
+                                        <Label className={!formData.primary_skill_category ? "text-muted-foreground/50" : ""}>
+                                            Secondary Skill Category
+                                        </Label>
                                         <Select
+                                            disabled={!formData.primary_skill_category}
                                             value={formData.secondary_skill_category || "none"}
-                                            onValueChange={(v) => setFormData({ ...formData, secondary_skill_category: v === "none" ? "" : v })}
+                                            onValueChange={(v) => {
+                                                setFormData({ ...formData, secondary_skill_category: v === "none" ? "" : v });
+                                                setSelectedSecondarySubSkills([]);
+                                            }}
                                         >
-                                            <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="None" />
+                                            </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="none">None</SelectItem>
-                                                {SKILL_CATEGORIES.filter((c) => c !== formData.primary_skill_category).map((c) => (
-                                                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                                                {dbCategories.filter((c) => c.title !== formData.primary_skill_category).map((c) => (
+                                                    <SelectItem key={c.id} value={c.title}>{c.title}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                 </div>
+
+                                {formData.primary_skill_category && (
+                                    <div className="mt-8 space-y-4 pt-6 border-t">
+                                        <div className="flex items-center gap-2">
+                                            <Target className="w-5 h-5 text-indigo-500" />
+                                            <h4 className="font-bold text-slate-900 dark:text-slate-100">Specify your roles in {formData.primary_skill_category}</h4>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">
+                                            Select all that apply. This helps us assign the right onboarding tasks to you.
+                                        </p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {dbSubcategories
+                                                .filter(s => {
+                                                    const parent = dbCategories.find(c => c.title === formData.primary_skill_category);
+                                                    return s.category_id === parent?.id;
+                                                })
+                                                .map((role) => (
+                                                    <div
+                                                        key={role.id}
+                                                        className={`flex items-center space-x-3 p-3 rounded-xl border transition-all cursor-pointer ${selectedPrimarySubSkills.includes(role.name) ? 'border-primary bg-primary/5' : 'bg-card hover:bg-accent/50'}`}
+                                                        onClick={() => {
+                                                            const exists = selectedPrimarySubSkills.includes(role.name);
+                                                            if (exists) {
+                                                                setSelectedPrimarySubSkills(selectedPrimarySubSkills.filter(s => s !== role.name));
+                                                            } else {
+                                                                setSelectedPrimarySubSkills([...selectedPrimarySubSkills, role.name]);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Checkbox
+                                                            id={role.id}
+                                                            checked={selectedPrimarySubSkills.includes(role.name)}
+                                                            onCheckedChange={() => { }} // Handled by div onClick
+                                                        />
+                                                        <Label htmlFor={role.id} className="flex-1 cursor-pointer font-medium">
+                                                            {role.name}
+                                                        </Label>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {formData.secondary_skill_category && (
+                                    <div className="mt-8 space-y-4 pt-6 border-t">
+                                        <div className="flex items-center gap-2">
+                                            <Target className="w-5 h-5 text-indigo-500" />
+                                            <h4 className="font-bold text-slate-900 dark:text-slate-100">Specify your roles in {formData.secondary_skill_category}</h4>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">
+                                            Optional. Select all that apply for your secondary category.
+                                        </p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {dbSubcategories
+                                                .filter(s => {
+                                                    const parent = dbCategories.find(c => c.title === formData.secondary_skill_category);
+                                                    return s.category_id === parent?.id;
+                                                })
+                                                .map((role) => (
+                                                    <div
+                                                        key={role.id}
+                                                        className={`flex items-center space-x-3 p-3 rounded-xl border transition-all cursor-pointer ${selectedSecondarySubSkills.includes(role.name) ? 'border-primary bg-primary/5' : 'bg-card hover:bg-accent/50'}`}
+                                                        onClick={() => {
+                                                            const exists = selectedSecondarySubSkills.includes(role.name);
+                                                            if (exists) {
+                                                                setSelectedSecondarySubSkills(selectedSecondarySubSkills.filter(s => s !== role.name));
+                                                            } else {
+                                                                setSelectedSecondarySubSkills([...selectedSecondarySubSkills, role.name]);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Checkbox
+                                                            id={role.id}
+                                                            checked={selectedSecondarySubSkills.includes(role.name)}
+                                                            onCheckedChange={() => { }} // Handled by div onClick
+                                                        />
+                                                        <Label htmlFor={role.id} className="flex-1 cursor-pointer font-medium">
+                                                            {role.name}
+                                                        </Label>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </TabsContent>
@@ -654,6 +803,6 @@ export default function ProfileView() {
                     Save
                 </Button>
             </div>
-        </div>
+        </div >
     );
 }

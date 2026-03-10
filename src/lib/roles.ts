@@ -1,4 +1,4 @@
-import { auth, clerkClient } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
 export type UserRole = "Admin" | "Program" | "Operations" | "Volunteer";
@@ -9,8 +9,8 @@ export type VolunteerType =
     | "internal_alumni_ext"
     | "internal_alumni_staff";
 
-/** Shape of publicMetadata stored on Clerk users */
-export interface ClerkPublicMetadata {
+/** Shape of app_metadata stored on Supabase users */
+export interface UserAppMetadata {
     role?: UserRole;
     volunteer_type?: VolunteerType;
     onboarding_completed?: boolean;
@@ -57,12 +57,12 @@ export const checkRole = async (role: UserRole) => {
  * Returns the active role of the current user.
  * If the user is the MASTER_USER_ID, forcefully identifies them as "Admin".
  * If no role is found on the user's claims, forcefully sets it to 'Volunteer' 
- * in the Clerk publicMetadata.
+ * in the Supabase app_metadata.
  */
-export const getUserRole = async (freshClerkUser?: any): Promise<UserRole> => {
+export const getUserRole = async (freshUser?: any): Promise<UserRole> => {
     const { sessionClaims, userId } = await auth();
-    const claimRole = (freshClerkUser?.publicMetadata?.role || sessionClaims?.metadata?.role || (sessionClaims as any)?.role) as UserRole | undefined;
-    const isVolunteerEnabled = freshClerkUser?.publicMetadata?.volunteerEnabled === true || sessionClaims?.metadata?.volunteerEnabled === true || (sessionClaims as any)?.volunteerEnabled === true;
+    const claimRole = (freshUser?.app_metadata?.role || sessionClaims?.metadata?.role || (sessionClaims as any)?.role) as UserRole | undefined;
+    const isVolunteerEnabled = freshUser?.app_metadata?.volunteerEnabled === true || sessionClaims?.metadata?.volunteerEnabled === true || (sessionClaims as any)?.volunteerEnabled === true;
 
     // Support role override for admins and opt-in volunteers
     const cookieStore = await cookies();
@@ -88,7 +88,7 @@ export const getUserRole = async (freshClerkUser?: any): Promise<UserRole> => {
     const role = claimRole;
 
     // If no role is found in the JWT session claims, default to "Volunteer" for the UI.
-    // We strictly do NOT persist this to Clerk here, as sessionClaims might just be stale
+    // We strictly do NOT persist this to Supabase here, as sessionClaims might just be stale
     // from a recent manual dashboard edit before a new JWT was issued.
     return role || "Volunteer";
 };

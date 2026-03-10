@@ -12,7 +12,7 @@ export default function VolunteerDashboard() {
         <div className="flex flex-1 flex-col gap-5 p-4 md:p-8 max-w-6xl mx-auto w-full">
             <div>
                 <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                    Hi {user?.firstName} 👋 Welcome to NavGurukul!
+                    {user?.firstName ? `Hi ${user.firstName} 👋 Welcome to NavGurukul!` : 'Welcome to NavGurukul!'}
                 </h1>
                 <p className="text-muted-foreground mt-1 text-sm md:text-base">
                     We're excited to have you on board. Let's get you set up and ready to contribute.
@@ -21,10 +21,10 @@ export default function VolunteerDashboard() {
 
             <div className="mt-4 pb-12">
                 <div
-                    className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-all cursor-pointer hover:border-emerald-200 dark:hover:border-emerald-900"
+                    className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-[10px] p-6 flex items-center gap-6 shadow-sm hover:shadow-md transition-all cursor-pointer hover:border-emerald-200 dark:hover:border-emerald-900"
                     onClick={() => router.push('/onboarding')}
                 >
-                    <div className="p-3 bg-emerald-50 dark:bg-emerald-900/50 rounded-lg text-emerald-600 dark:text-emerald-400">
+                    <div className="p-3 bg-emerald-50 dark:bg-emerald-900/50 rounded-[10px] text-emerald-600 dark:text-emerald-400">
                         <UserPlus className="w-6 h-6" />
                     </div>
                     <div className="flex-1 pr-4">

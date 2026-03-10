@@ -1,33 +1,34 @@
 "use server";
 
-import { auth, clerkClient } from "@/lib/auth";
+import { auth } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 
 const ROOT_ADMIN_EMAIL = 'nitin@navgurukul.org';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-type Client = Awaited<ReturnType<typeof clerkClient>>;
+type Client = any;
 
 /** True when the userId is the protected root admin (by ID or email). */
-async function isRootAdmin(userId: string, client: Client): Promise<boolean> {
+async function isRootAdmin(userId: string, supabase: Client): Promise<boolean> {
     if (userId === process.env.MASTER_USER_ID) return true;
     try {
-        const user = await client.users.getUser(userId);
-        return user.primaryEmailAddress?.emailAddress === ROOT_ADMIN_EMAIL;
+        const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+        return user?.email === ROOT_ADMIN_EMAIL;
     } catch {
         return false;
     }
 }
 
 /** Resolve the acting (currently-logged-in) user's email and role. */
-async function getActor(client: Client) {
+async function getActor(supabase: Client) {
     const { userId, sessionClaims } = await auth();
     if (!userId) throw new Error("Unauthenticated");
 
     const email: string =
         (sessionClaims as any)?.email ||
-        (await client.users.getUser(userId)).primaryEmailAddress?.emailAddress ||
+        (await supabase.auth.admin.getUserById(userId)).data.user?.email ||
         "";
     const role: string =
         (sessionClaims?.metadata?.role as string) ||
@@ -41,11 +42,11 @@ async function getActor(client: Client) {
 // ─── actions ────────────────────────────────────────────────────────────────
 
 export async function deleteUserAction(userId: string) {
-    const client = await clerkClient();
-    const actor = await getActor(client);
+    const supabase = createAdminClient();
+    const actor = await getActor(supabase);
 
     // Root admin is indestructible
-    if (await isRootAdmin(userId, client)) {
+    if (await isRootAdmin(userId, supabase)) {
         return { success: false, error: "Cannot delete the root admin." };
     }
 
@@ -60,14 +61,14 @@ export async function deleteUserAction(userId: string) {
     }
 
     // Non-root admins cannot delete other admins; only root admin can
-    const targetUser = await client.users.getUser(userId);
-    const targetRole: string = (targetUser.publicMetadata?.role as string) || "Volunteer";
+    const { data: { user: targetUser } } = await supabase.auth.admin.getUserById(userId);
+    const targetRole: string = (targetUser?.app_metadata?.role as string) || "Volunteer";
     if (!actor.isRoot && targetRole === "Admin") {
         return { success: false, error: "Only the root admin can delete another admin." };
     }
 
     try {
-        await client.users.deleteUser(userId);
+        await supabase.auth.admin.deleteUser(userId);
         revalidatePath("/", "layout");
         return { success: true };
     } catch (error: any) {
@@ -76,16 +77,16 @@ export async function deleteUserAction(userId: string) {
 }
 
 export async function updateUserRoleAction(userId: string, role: string) {
-    const client = await clerkClient();
-    const actor = await getActor(client);
+    const supabase = createAdminClient();
+    const actor = await getActor(supabase);
 
     // Root admin's role is immutable
-    if (await isRootAdmin(userId, client)) {
+    if (await isRootAdmin(userId, supabase)) {
         return { success: false, error: "Cannot modify the root admin's role." };
     }
 
-    const targetUser = await client.users.getUser(userId);
-    const targetRole: string = (targetUser.publicMetadata?.role as string) || "Volunteer";
+    const { data: { user: targetUser } } = await supabase.auth.admin.getUserById(userId);
+    const targetRole: string = (targetUser?.app_metadata?.role as string) || "Volunteer";
 
     if (actor.isRoot) {
         // Root admin: unrestricted
@@ -109,8 +110,8 @@ export async function updateUserRoleAction(userId: string, role: string) {
     }
 
     try {
-        await client.users.updateUserMetadata(userId, {
-            publicMetadata: { role },
+        await supabase.auth.admin.updateUserById(userId, {
+            app_metadata: { ...targetUser?.app_metadata, role },
         });
         revalidatePath("/", "layout");
         return { success: true };
@@ -120,8 +121,8 @@ export async function updateUserRoleAction(userId: string, role: string) {
 }
 
 export async function inviteUserAction(emailAddress: string, role: string) {
-    const client = await clerkClient();
-    const actor = await getActor(client);
+    const supabase = createAdminClient();
+    const actor = await getActor(supabase);
 
     // Only root admin can send an Admin invite
     if (role === "Admin" && !actor.isRoot) {
@@ -139,9 +140,8 @@ export async function inviteUserAction(emailAddress: string, role: string) {
     }
 
     try {
-        await client.invitations.createInvitation({
-            emailAddress,
-            publicMetadata: { role },
+        await supabase.auth.admin.inviteUserByEmail(emailAddress, {
+            data: { role },
         });
         revalidatePath("/", "layout");
         return { success: true };
@@ -151,19 +151,20 @@ export async function inviteUserAction(emailAddress: string, role: string) {
 }
 
 export async function toggleVolunteeringProfileAction(userId: string, enabled: boolean) {
-    const client = await clerkClient();
-    if (await isRootAdmin(userId, client)) {
+    const supabase = createAdminClient();
+    if (await isRootAdmin(userId, supabase)) {
         return { success: false, error: "Cannot modify the root admin." };
     }
 
-    const actor = await getActor(client);
+    const actor = await getActor(supabase);
     if (!actor.isRoot && actor.role !== "Admin") {
         return { success: false, error: "Only admins can toggle volunteer profiles." };
     }
 
     try {
-        await client.users.updateUserMetadata(userId, {
-            publicMetadata: { volunteerEnabled: enabled },
+        const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+        await supabase.auth.admin.updateUserById(userId, {
+            app_metadata: { ...user?.app_metadata, volunteerEnabled: enabled },
         });
         revalidatePath("/", "layout");
         return { success: true };
@@ -173,19 +174,20 @@ export async function toggleVolunteeringProfileAction(userId: string, enabled: b
 }
 
 export async function toggleUserManagementAction(userId: string, enabled: boolean) {
-    const client = await clerkClient();
-    if (await isRootAdmin(userId, client)) {
+    const supabase = createAdminClient();
+    if (await isRootAdmin(userId, supabase)) {
         return { success: false, error: "Cannot modify the root admin." };
     }
 
-    const actor = await getActor(client);
+    const actor = await getActor(supabase);
     if (!actor.isRoot && actor.role !== "Admin") {
         return { success: false, error: "Only admins can toggle user management." };
     }
 
     try {
-        await client.users.updateUserMetadata(userId, {
-            publicMetadata: { userManagementEnabled: enabled },
+        const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+        await supabase.auth.admin.updateUserById(userId, {
+            app_metadata: { ...user?.app_metadata, userManagementEnabled: enabled },
         });
         revalidatePath("/", "layout");
         return { success: true };

@@ -112,9 +112,8 @@ export function LoginForm({
                     </div>
                   )}
                 </Button>
-                {/* Specific mount point for Turnstile widget within login card so it doesn't get dumped to body bounds. */}
-                <div id="clerk-captcha" className="mt-4 flex justify-center" />
               </div>
+
 
               <div className="pt-4 text-xs font-semibold text-center text-muted-foreground uppercase tracking-widest">
                 New here?{" "}

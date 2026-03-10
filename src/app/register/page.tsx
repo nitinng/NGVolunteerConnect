@@ -520,10 +520,7 @@ function RegistrationForm() {
                                 )}
                             </Button>
 
-                            {/* Clerk mounts its Cloudflare Turnstile bot-check widget here.
-                                Without this anchor it falls back to appending to <body>
-                                which puts it below the page footer, out of view. */}
-                            <div id="clerk-captcha" className="mt-4 flex justify-center" />
+
                         </div>
                     )}
 

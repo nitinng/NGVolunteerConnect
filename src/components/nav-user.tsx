@@ -6,7 +6,7 @@ import {
   ChevronsUpDown,
   LogOut,
 } from "lucide-react"
-import { useClerk } from "@/hooks/use-auth"
+import { useAuthActions } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
 
 import {
@@ -40,7 +40,7 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
-  const { signOut } = useClerk()
+  const { signOut } = useAuthActions()
   const router = useRouter()
 
   return (

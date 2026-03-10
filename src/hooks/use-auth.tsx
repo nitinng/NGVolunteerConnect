@@ -18,20 +18,44 @@ export function useUser() {
         let mounted = true;
         const getUser = async () => {
             try {
-                const { data: { user }, error } = await supabase.auth.getUser();
+                // Use getSession instead of getUser for Client components. 
+                // getUser() strictly forces a network request. This causes 4-8 concurrent HTTP requests on page reload!
+                // getSession() resolves instantly from localStorage, and the onAuthStateChange handles renewals.
+                const { data: { session }, error } = await supabase.auth.getSession();
                 if (!mounted) return;
 
-                if (error) {
-                    console.error("useUser hook user error:", error);
+                const user = session?.user || null;
+
+                if (error || !user) {
+                    if (error) console.error("useUser hook session error:", error);
                     setUser(null);
                 } else if (user) {
+                    // Initialize from window object if possible to prevent simultaneous 
+                    // extra DB hits from VolunteerDashboard and AppSidebar racing.
+                    let dbName = (window as any)[`__ng_profile_cache_${user.id}`] || "";
+
+                    if (mounted && !dbName) {
+                        const { data: profile } = await supabase
+                            .from("profiles")
+                            .select("full_name")
+                            .eq("auth_user_id", user.id)
+                            .maybeSingle();
+
+                        if (profile && profile.full_name) {
+                            dbName = profile.full_name;
+                            (window as any)[`__ng_profile_cache_${user.id}`] = dbName;
+                        }
+                    }
+
                     // Build the base user object from auth metadata.
                     // Check multiple sources for full_name, in order of preference:
-                    // 1. user_metadata.full_name (set by Supabase from Google OAuth)
-                    // 2. identity_data.full_name (Google identity provider data)
-                    // 3. identity_data.name (alternate Google field)
+                    // 1. Database profile (most accurate)
+                    // 2. user_metadata.full_name (set by Supabase from Google OAuth)
+                    // 3. identity_data.full_name (Google identity provider data)
+                    // 4. identity_data.name (alternate Google field)
                     const googleIdentity = user.identities?.find((id: any) => id.provider === 'google');
-                    const metaName = user.user_metadata?.full_name
+                    const metaName = dbName
+                        || user.user_metadata?.full_name
                         || googleIdentity?.identity_data?.full_name
                         || googleIdentity?.identity_data?.name
                         || "";
@@ -39,6 +63,14 @@ export function useUser() {
                         || googleIdentity?.identity_data?.avatar_url
                         || googleIdentity?.identity_data?.picture
                         || "";
+
+                    console.log("[useUser Auth Debug] Raw Auth Data:", {
+                        authUserId: user.id,
+                        dbName,
+                        userMetadataName: user.user_metadata?.full_name,
+                        googleIdentityName: googleIdentity?.identity_data?.full_name || googleIdentity?.identity_data?.name,
+                        resolvedMetaName: metaName
+                    });
 
                     setUser({
                         id: user.id,
@@ -65,26 +97,6 @@ export function useUser() {
                             });
                         }
                     });
-
-                    // Fallback: if full_name is still missing (can happen right after OAuth
-                    // before metadata propagates), load it from the profiles table.
-                    if (!metaName && mounted) {
-                        const { data: profile } = await supabase
-                            .from("profiles")
-                            .select("full_name")
-                            .eq("auth_user_id", user.id)
-                            .maybeSingle();
-
-                        if (profile?.full_name && mounted) {
-                            const nameParts = profile.full_name.trim().split(" ");
-                            setUser((prev: any) => prev ? {
-                                ...prev,
-                                firstName: nameParts[0] || "",
-                                lastName: nameParts.slice(1).join(" ") || "",
-                                fullName: profile.full_name,
-                            } : null);
-                        }
-                    }
                 } else {
                     setUser(null);
                 }
@@ -121,7 +133,7 @@ export function useUser() {
     return { user, isLoaded };
 }
 
-export function useClerk() {
+export function useAuthActions() {
     const supabase = createBrowserClient();
     const router = useRouter();
 
@@ -164,9 +176,7 @@ export function useSignUp() {
     };
 }
 
-export function ClerkProvider({ children }: { children: React.ReactNode }) {
-    return <>{children} </>;
-}
+
 
 export function AuthenticateWithRedirectCallback(props: any) {
     const router = useRouter();

@@ -50,7 +50,7 @@ export const SKILLS_CONFIG: Record<string, SkillCategory> = {
             { id: "role_interviews", name: "Coding Interviews", tasks: [] }
         ]
     },
-    "Non-Technical/Professional": {
+    "Non-Technical / Professional": {
         id: "cat_nontech",
         key: "nonTechSkills",
         title: "Non-Technical / Professional",
@@ -61,5 +61,17 @@ export const SKILLS_CONFIG: Record<string, SkillCategory> = {
                 ]
             }
         ]
+    },
+    "Creative": {
+        id: "cat_creative",
+        key: "creativeSkills",
+        title: "Creative",
+        roles: []
+    },
+    "Leadership & Operations": {
+        id: "cat_leadership",
+        key: "leadershipSkills",
+        title: "Leadership & Operations",
+        roles: []
     }
 };

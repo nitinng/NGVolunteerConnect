@@ -2,7 +2,6 @@
 
 import { SidebarIcon, Fingerprint } from "lucide-react"
 import { usePathname } from "next/navigation"
-import { RoleSwitcher } from "@/components/role-switcher"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,8 +13,20 @@ import {
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useSidebar } from "@/components/ui/sidebar"
-
 import { ModeToggle } from "@/components/mode-toggle"
+import dynamic from "next/dynamic"
+
+// Loaded client-only to avoid Radix UI ID hydration mismatches.
+// The user menu uses context data (no SSR needed) so this is safe and correct.
+const HeaderUserMenu = dynamic(
+  () => import("@/components/header-user-menu").then((m) => ({ default: m.HeaderUserMenu })),
+  { ssr: false }
+)
+
+const RoleSwitcher = dynamic(
+  () => import("@/components/role-switcher").then((m) => ({ default: m.RoleSwitcher })),
+  { ssr: false }
+)
 
 export function SiteHeader({
   isTrueAdmin,
@@ -67,6 +78,7 @@ export function SiteHeader({
             baseRole={baseRole}
             volunteerEnabled={volunteerEnabled}
           />
+          <HeaderUserMenu />
         </div>
       </div>
     </header>

@@ -18,105 +18,24 @@ import {
     PlayCircle,
     BookOpen
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { getMyProfile } from "@/app/actions/profile-actions";
-import { getSkillCategories } from "@/app/actions/skills-actions";
-import { calculateProfileCompletion } from "@/lib/profile-utils";
-import type { Profile, SkillCategory } from "@/lib/supabase";
 import { Progress } from "@/components/ui/progress";
-import { useUserContext } from "@/contexts/user-context";
-import { getGeneralOnboardingModules, GeneralModule, getGeneralOnboardingTasks, getAllContentBlocks, getUserTaskProgress } from "@/app/actions/general-onboarding-actions";
+import { type GeneralModule } from "@/app/actions/general-onboarding-actions";
 import * as Icons from "lucide-react";
 
-export default function OnboardingView() {
+interface OnboardingViewProps {
+    serverModules: GeneralModule[];
+    serverCompletedModules: string[];
+    serverStats: { totalPages: number; completedPages: number; percentage: number };
+    serverCompletion: number;
+}
+
+export default function OnboardingView({ serverModules, serverCompletedModules, serverStats, serverCompletion }: OnboardingViewProps) {
     const router = useRouter();
-    const user = useUserContext();
-    const [profile, setProfile] = useState<Profile | null>(null);
-    const [completion, setCompletion] = useState(0);
-
-    const [dbCategories, setDbCategories] = useState<SkillCategory[]>([]);
-    const [modules, setModules] = useState<GeneralModule[]>([]);
-    const [stats, setStats] = useState({ totalPages: 0, completedPages: 0, percentage: 0 });
-    const [completedModules, setCompletedModules] = useState<string[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const loadData = async () => {
-            if (!user?.id) return;
-            try {
-                const [p, cats, loadedModules, loadedTasks, loadedBlocks, loadedProgress] = await Promise.all([
-                    getMyProfile(),
-                    getSkillCategories(),
-                    getGeneralOnboardingModules(),
-                    getGeneralOnboardingTasks(),
-                    getAllContentBlocks(),
-                    getUserTaskProgress()
-                ]);
-                setProfile(p);
-                setDbCategories(cats);
-                
-                const sortedModules = loadedModules.sort((a,b) => a.order_index - b.order_index);
-                setModules(sortedModules);
-                
-                if (p) {
-                    setCompletion(calculateProfileCompletion(p, user?.publicMetadata || {}, cats.map(c => c.key)));
-                }
-
-                // Granular calculation across everything!
-                let tPages = 0;
-                let cPages = 0;
-                const cModules: string[] = [];
-
-                sortedModules.forEach(m => {
-                    const mTasks = loadedTasks.filter(t => t.module_id === m.id);
-                    let mTotal = 0;
-                    let mComp = 0;
-
-                    mTasks.forEach(t => {
-                        const tBlocks = loadedBlocks.filter(b => b.task_id === t.id).sort((a,b) => (a.order_index ?? 0) - (b.order_index ?? 0));
-                        let pagesForTask = 0;
-                        if (tBlocks.length === 0) {
-                            pagesForTask = 1;
-                        } else {
-                            pagesForTask = 1; 
-                            tBlocks.forEach((tb, i) => { if (i > 0 && tb.page_behavior === 'new_page') pagesForTask++; });
-                        }
-                        mTotal += pagesForTask;
-                        tPages += pagesForTask;
-
-                        const prog = loadedProgress.find(p => p.task_id === t.id);
-                        if (prog) {
-                            if (prog.is_completed) {
-                                mComp += pagesForTask;
-                                cPages += pagesForTask;
-                            } else if (prog.completed_pages) {
-                                mComp += prog.completed_pages.length;
-                                cPages += prog.completed_pages.length;
-                            }
-                        }
-                    });
-
-                    // Module counts as officially cleared if all internal page shards are read/checked off
-                    if (mTotal > 0 && mComp >= mTotal) {
-                        cModules.push(m.id);
-                    }
-                });
-                
-                setStats({ 
-                    totalPages: tPages, 
-                    completedPages: cPages, 
-                    percentage: tPages > 0 ? Math.round((cPages / tPages) * 100) : 0 
-                });
-                setCompletedModules(cModules);
-
-            } catch (err) {
-                console.error("Failed to load onboarding data:", err);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        loadData();
-    }, [user?.id]);
+    
+    const modules = serverModules;
+    const completedModules = serverCompletedModules;
+    const stats = serverStats;
+    const completion = serverCompletion;
 
 
 

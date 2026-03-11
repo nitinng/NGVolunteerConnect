@@ -1,13 +1,93 @@
 import { getUserRole } from "@/lib/roles"
 import VolunteerDashboard from "./VolunteerDashboard"
 import { Zap, ShieldCheck, LayoutDashboard } from "lucide-react"
+
+import { getMyProfile } from "@/app/actions/profile-actions"
+import { getSkillCategories } from "@/app/actions/skills-actions"
+import { 
+    getGeneralOnboardingModules, 
+    getGeneralOnboardingTasks, 
+    getAllContentBlocks, 
+    getUserTaskProgress 
+} from "@/app/actions/general-onboarding-actions"
+import { calculateProfileCompletion } from "@/lib/profile-utils"
+import { currentUser } from "@/lib/auth"
+import type { Profile } from "@/lib/supabase"
+
 export default async function Page() {
   const role = await getUserRole();
+
+  let serverProfile: Profile | null = null;
+  let serverCompletion = 0;
+  let serverStats = { totalPages: 0, completedPages: 0, percentage: 0 };
+  let serverUniqRoles: string[] = [];
+
+  if (role === 'Volunteer') {
+    const user = await currentUser();
+    const publicMetadata = user?.publicMetadata || {};
+
+    const [profile, dbCategories, loadedModules, loadedTasks, loadedBlocks, loadedProgress] = await Promise.all([
+        getMyProfile(),
+        getSkillCategories(),
+        getGeneralOnboardingModules(),
+        getGeneralOnboardingTasks(),
+        getAllContentBlocks(),
+        getUserTaskProgress()
+    ]);
+
+    serverProfile = profile;
+    
+    if (profile) {
+        const categoryKeys = dbCategories.map(c => c.key);
+        serverCompletion = calculateProfileCompletion(profile, publicMetadata, categoryKeys);
+        const primaryRoles = profile.primary_skill_subcategories || [];
+        const secondaryRoles = profile.secondary_skill_subcategories || [];
+        serverUniqRoles = Array.from(new Set([...primaryRoles, ...secondaryRoles]));
+    }
+
+    let tPages = 0;
+    let cPages = 0;
+
+    loadedModules.forEach(m => {
+        const mTasks = loadedTasks.filter(t => t.module_id === m.id);
+        mTasks.forEach(t => {
+            const tBlocks = loadedBlocks.filter(b => b.task_id === t.id).sort((a,b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+            let pagesForTask = 0;
+            if (tBlocks.length === 0) {
+                pagesForTask = 1;
+            } else {
+                pagesForTask = 1; 
+                tBlocks.forEach((tb, i) => { if (i > 0 && tb.page_behavior === 'new_page') pagesForTask++; });
+            }
+            tPages += pagesForTask;
+
+            const prog = loadedProgress.find(p => p.task_id === t.id);
+            if (prog) {
+                if (prog.is_completed) {
+                    cPages += pagesForTask;
+                } else if (prog.completed_pages) {
+                    cPages += prog.completed_pages.length;
+                }
+            }
+        });
+    });
+
+    serverStats = { 
+        totalPages: tPages, 
+        completedPages: cPages, 
+        percentage: tPages > 0 ? Math.round((cPages / tPages) * 100) : 0 
+    };
+  }
 
   return (
     <div className="flex flex-1 flex-col p-2 md:p-4">
       {role === 'Volunteer' ? (
-        <VolunteerDashboard />
+        <VolunteerDashboard 
+            serverProfile={serverProfile}
+            serverCompletion={serverCompletion}
+            serverStats={serverStats}
+            serverUniqRoles={serverUniqRoles}
+        />
       ) : (
         <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
           <div className="relative overflow-hidden rounded-[12px] bg-slate-50 dark:bg-zinc-900/50 p-6 md:p-8 border border-slate-200 dark:border-zinc-800 shadow-sm group transition-all hover:bg-slate-100 dark:hover:bg-zinc-900/80">

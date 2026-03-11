@@ -14,10 +14,6 @@ import {
     Lock,
     Circle
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { getMyProfile } from "@/app/actions/profile-actions";
-import { getSkillCategories } from "@/app/actions/skills-actions";
-import { calculateProfileCompletion } from "@/lib/profile-utils";
 import type { Profile, SkillCategory } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,81 +21,29 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 import { Progress } from "@/components/ui/progress";
-import { getGeneralOnboardingModules, getGeneralOnboardingTasks, getAllContentBlocks, getUserTaskProgress } from "@/app/actions/general-onboarding-actions";
 
 import { useUserContext } from "@/contexts/user-context";
 
-export default function VolunteerDashboard() {
+interface VolunteerDashboardProps {
+    serverProfile: Profile | null;
+    serverCompletion: number;
+    serverStats: { totalPages: number; completedPages: number; percentage: number };
+    serverUniqRoles: string[];
+}
+
+export default function VolunteerDashboard({
+    serverProfile,
+    serverCompletion,
+    serverStats,
+    serverUniqRoles
+}: VolunteerDashboardProps) {
     const router = useRouter();
     const user = useUserContext();
-    const [profile, setProfile] = useState<Profile | null>(null);
-    const [completion, setCompletion] = useState(0);
-    const [stats, setStats] = useState({ totalPages: 0, completedPages: 0, percentage: 0 });
-    const [uniqRoles, setUniqRoles] = useState<string[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const loadData = async () => {
-            if (!user?.id) return;
-            try {
-                const [p, cats, loadedModules, loadedTasks, loadedBlocks, loadedProgress] = await Promise.all([
-                    getMyProfile(),
-                    getSkillCategories(),
-                    getGeneralOnboardingModules(),
-                    getGeneralOnboardingTasks(),
-                    getAllContentBlocks(),
-                    getUserTaskProgress()
-                ]);
-                setProfile(p);
-                if (p) {
-                    setCompletion(calculateProfileCompletion(p, user?.publicMetadata || {}, cats.map(c => c.key)));
-                    const primaryRoles = p.primary_skill_subcategories || [];
-                    const secondaryRoles = p.secondary_skill_subcategories || [];
-                    setUniqRoles(Array.from(new Set([...primaryRoles, ...secondaryRoles])));
-                }
-
-                // Calculate Onboarding stats
-                let tPages = 0;
-                let cPages = 0;
-
-                loadedModules.forEach(m => {
-                    const mTasks = loadedTasks.filter(t => t.module_id === m.id);
-                    mTasks.forEach(t => {
-                        const tBlocks = loadedBlocks.filter(b => b.task_id === t.id).sort((a,b) => (a.order_index ?? 0) - (b.order_index ?? 0));
-                        let pagesForTask = 0;
-                        if (tBlocks.length === 0) {
-                            pagesForTask = 1;
-                        } else {
-                            pagesForTask = 1; 
-                            tBlocks.forEach((tb, i) => { if (i > 0 && tb.page_behavior === 'new_page') pagesForTask++; });
-                        }
-                        tPages += pagesForTask;
-
-                        const prog = loadedProgress.find(p => p.task_id === t.id);
-                        if (prog) {
-                            if (prog.is_completed) {
-                                cPages += pagesForTask;
-                            } else if (prog.completed_pages) {
-                                cPages += prog.completed_pages.length;
-                            }
-                        }
-                    });
-                });
-                
-                setStats({ 
-                    totalPages: tPages, 
-                    completedPages: cPages, 
-                    percentage: tPages > 0 ? Math.round((cPages / tPages) * 100) : 0 
-                });
-
-            } catch (err) {
-                console.error("Failed to load dashboard data:", err);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        loadData();
-    }, [user?.id]);
+    
+    const profile = serverProfile;
+    const completion = serverCompletion;
+    const stats = serverStats;
+    const uniqRoles = serverUniqRoles;
 
     const toTitleCase = (str: string) => {
         return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());

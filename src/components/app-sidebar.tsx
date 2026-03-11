@@ -3,6 +3,7 @@
 import * as React from "react"
 import {
   BookOpen,
+  BookOpenCheck,
   Bot,
   Command,
   Frame,
@@ -12,11 +13,15 @@ import {
   Send,
   Settings2,
   SquareTerminal,
+  LayoutDashboard,
+  UserCircle,
+  Target,
+  Sparkles,
+  Settings
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
-import { BookOpenCheck } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -25,51 +30,16 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { UserRole } from "@/lib/roles"
+import Link from "next/link"
 
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  navMain: [
+  navSecondary: [
     {
-      title: "Users",
-      url: "/users",
-      icon: Bot,
-      isActive: false,
-      items: [
-        {
-          title: "Manage Users",
-          url: "/users",
-        }
-      ]
-    },
-    {
-      title: "Documentation",
+      title: "Handbook",
       url: "#",
       icon: BookOpen,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
     },
-  ],
-  navSecondary: [
     {
       title: "Support",
       url: "#",
@@ -81,63 +51,65 @@ const data = {
       icon: Send,
     },
   ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: Frame,
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
-    },
-  ],
 }
 
-import { UserRole } from "@/lib/roles"
-
 export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps<typeof Sidebar> & { role?: UserRole, devOverride?: string }) {
-
-  // Use the strictly server-resolved role to prevent Hydration mismatches
-  const activeRole = devOverride ? (role || 'Volunteer') : (role || 'Volunteer');
+  // Determine if it's a volunteer view
+  const activeRole = role || 'Volunteer';
   const isVolunteer = activeRole === 'Volunteer';
 
-  let dynamicNavMain = [...data.navMain];
+  const navMain = [
+    {
+      title: "Dashboard",
+      url: "/",
+      icon: LayoutDashboard,
+      isActive: true,
+    },
+    {
+      title: "Onboarding Hub",
+      url: "/onboarding",
+      icon: BookOpenCheck,
+      items: isVolunteer ? [
+        {
+          title: "My Journey",
+          url: "/onboarding",
+        }
+      ] : [
+        {
+          title: "My Journey",
+          url: "/onboarding",
+        },
+        {
+          title: "Skills Management",
+          url: "/skills",
+        }
+      ]
+    },
+    {
+      title: "My Profile",
+      url: "/profile",
+      icon: UserCircle,
+    }
+  ];
 
-  const canSeeUsers = activeRole !== 'Volunteer';
-
-  if (!canSeeUsers) {
-    dynamicNavMain = dynamicNavMain.filter(n => n.title !== "Users");
+  // Admins & Program staff get User Management
+  if (activeRole !== 'Volunteer') {
+    navMain.push({
+      title: "Management",
+      url: "#",
+      icon: Settings2,
+      items: [
+        {
+          title: "User Registry",
+          url: "/users",
+        },
+        {
+          title: "Onboarding Config",
+          url: "/management/onboarding",
+        }
+      ]
+    });
   }
-
-  // Onboarding should be at the top for everyone, but with different sub-items
-  dynamicNavMain.unshift({
-    title: "Onboarding Hub",
-    url: "/onboarding",
-    icon: BookOpenCheck,
-    isActive: true,
-    items: isVolunteer ? [
-      {
-        title: "View Tasks & Info",
-        url: "/onboarding"
-      }
-    ] : [
-      {
-        title: "View Tasks & Info",
-        url: "/onboarding"
-      },
-      {
-        title: "Skills Management",
-        url: "/skills"
-      }
-    ]
-  });
 
   return (
     <Sidebar
@@ -145,9 +117,10 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
       {...props}
     >
       <SidebarContent>
-        <NavMain items={dynamicNavMain} />
+        <NavMain items={navMain} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
     </Sidebar>
   )
 }
+

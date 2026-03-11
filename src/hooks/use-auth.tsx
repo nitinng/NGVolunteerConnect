@@ -18,10 +18,12 @@ export function useUser() {
         let mounted = true;
         const getUser = async () => {
             try {
-                // Use getSession instead of getUser for Client components. 
-                // getUser() strictly forces a network request. This causes 4-8 concurrent HTTP requests on page reload!
-                // getSession() resolves instantly from localStorage, and the onAuthStateChange handles renewals.
-                const { data: { session }, error } = await supabase.auth.getSession();
+                // Ignore AbortErrors from Web Lock contention (multi-tab/hot-reload)
+                const { data: { session }, error } = await (supabase.auth.getSession() as any).catch((err: any) => {
+                    if (err?.name === 'AbortError' || err?.message?.includes('Lock broken')) return { data: { session: null }, error: null };
+                    throw err;
+                });
+
                 if (!mounted) return;
 
                 const user = session?.user || null;

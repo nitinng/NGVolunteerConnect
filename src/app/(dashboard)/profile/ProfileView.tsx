@@ -638,6 +638,10 @@ export default function ProfileView() {
                                                             if (exists) {
                                                                 setSelectedPrimarySubSkills(selectedPrimarySubSkills.filter(s => s !== role.name));
                                                             } else {
+                                                                if (selectedPrimarySubSkills.length >= 3) {
+                                                                    toast.error("You can select a maximum of 3 primary roles.");
+                                                                    return;
+                                                                }
                                                                 setSelectedPrimarySubSkills([...selectedPrimarySubSkills, role.name]);
                                                             }
                                                         }}
@@ -680,6 +684,10 @@ export default function ProfileView() {
                                                             if (exists) {
                                                                 setSelectedSecondarySubSkills(selectedSecondarySubSkills.filter(s => s !== role.name));
                                                             } else {
+                                                                if (selectedSecondarySubSkills.length >= 3) {
+                                                                    toast.error("You can select a maximum of 3 secondary roles.");
+                                                                    return;
+                                                                }
                                                                 setSelectedSecondarySubSkills([...selectedSecondarySubSkills, role.name]);
                                                             }
                                                         }}

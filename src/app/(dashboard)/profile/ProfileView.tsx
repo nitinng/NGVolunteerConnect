@@ -9,7 +9,7 @@ import {
     Linkedin, FileText, Target
 } from "lucide-react";
 import { updateProfile, getMyProfile } from "@/app/actions/profile-actions";
-import { Profile, SkillCategory, SkillSubcategory } from "@/lib/supabase";
+import type { Profile, SkillCategory, SkillSubcategory } from "@/lib/supabase";
 import {
     getSkillCategories,
     getSkillSubcategories

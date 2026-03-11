@@ -18,7 +18,7 @@ import { useState, useEffect } from "react";
 import { getMyProfile } from "@/app/actions/profile-actions";
 import { getSkillCategories } from "@/app/actions/skills-actions";
 import { calculateProfileCompletion } from "@/lib/profile-utils";
-import { Profile, SkillCategory } from "@/lib/supabase";
+import type { Profile, SkillCategory } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

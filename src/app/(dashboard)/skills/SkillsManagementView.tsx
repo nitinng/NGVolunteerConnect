@@ -11,7 +11,7 @@ import {
     updateSkillSubcategory,
     deleteSkillSubcategory
 } from "@/app/actions/skills-actions";
-import { SkillCategory, SkillSubcategory } from "@/lib/supabase";
+import type { SkillCategory, SkillSubcategory } from "@/lib/supabase";
 import {
     Table,
     TableBody,

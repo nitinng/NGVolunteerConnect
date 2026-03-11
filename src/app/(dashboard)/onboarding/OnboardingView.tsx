@@ -22,7 +22,7 @@ import { useState, useEffect } from "react";
 import { getMyProfile } from "@/app/actions/profile-actions";
 import { getSkillCategories } from "@/app/actions/skills-actions";
 import { calculateProfileCompletion } from "@/lib/profile-utils";
-import { Profile, SkillCategory } from "@/lib/supabase";
+import type { Profile, SkillCategory } from "@/lib/supabase";
 import { Progress } from "@/components/ui/progress";
 import { useUserContext } from "@/contexts/user-context";
 import { getGeneralOnboardingModules, GeneralModule, getGeneralOnboardingTasks, getAllContentBlocks, getUserTaskProgress } from "@/app/actions/general-onboarding-actions";

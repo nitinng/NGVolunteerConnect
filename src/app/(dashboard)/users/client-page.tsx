@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Plus, MoreHorizontal, Trash, Shield, ShieldAlert, ShieldCheck, Users, Activity, UserMinus, UserX, UserCog } from "lucide-react";
+import { Plus, MoreHorizontal, Trash, Shield, ShieldAlert, ShieldCheck, Users, Activity, UserMinus, UserX, UserCog } from "lucide-react";
 import {
     XAxis,
     CartesianGrid,
@@ -434,7 +434,7 @@ export function UsersClient({ initialUsers, currentUserId, actorRole, isRootActo
                                 <div className="w-full flex justify-between">
                                     <Button variant="ghost" onClick={() => setIsInviteOpen(false)}>Cancel</Button>
                                     <Button onClick={handleInvite} disabled={loadingAction === "invite" || !inviteEmail}>
-                                        {loadingAction === "invite" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                        {loadingAction === "invite" ? <i className="fa-solid fa-spinner fa-spin mr-2" /> : null}
                                         Send Invite
                                     </Button>
                                 </div>
@@ -492,7 +492,7 @@ export function UsersClient({ initialUsers, currentUserId, actorRole, isRootActo
                                                 <Button variant="ghost" className="h-8 w-8 p-0">
                                                     <span className="sr-only">Open menu</span>
                                                     {loadingAction === `role-${user.id}` || loadingAction === user.id ? (
-                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                        <i className="fa-solid fa-spinner fa-spin" />
                                                     ) : (
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     )}

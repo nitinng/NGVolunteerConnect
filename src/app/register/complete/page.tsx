@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { completeRegistration } from "@/app/actions/user-actions";
-import { Loader2 } from "lucide-react";
+import LoadingView from "@/components/loading-view";
 
 export default function CompleteRegistration() {
     const router = useRouter();
@@ -52,10 +52,16 @@ export default function CompleteRegistration() {
     }, [router]);
 
     return (
-        <div className="flex h-screen items-center justify-center flex-col gap-4 bg-slate-50 dark:bg-zinc-950">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <h1 className="text-xl font-bold tracking-tight text-foreground">{status}</h1>
-            <p className="text-sm text-muted-foreground">Please do not close this window.</p>
+        <div className="relative min-h-[100dvh]">
+            <LoadingView />
+            <div className="absolute inset-0 z-[10000] flex flex-col items-center justify-center p-6 bg-transparent pointer-events-none">
+                <div className="w-full max-w-sm flex flex-col items-center text-center space-y-4">
+                    <div className="mt-[200px]">
+                        <h1 className="text-xl font-bold tracking-tight text-foreground">{status}</h1>
+                        <p className="text-sm text-muted-foreground mt-2">Please do not close this window.</p>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

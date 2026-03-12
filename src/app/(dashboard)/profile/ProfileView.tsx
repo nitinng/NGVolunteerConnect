@@ -4,7 +4,7 @@ import { useAuthActions } from "@/hooks/use-auth";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
-    Loader2, Moon, User, Briefcase, GraduationCap,
+    Moon, User, Briefcase, GraduationCap,
     Heart, Calendar, LogOut, Check, MapPin, Phone,
     Linkedin, FileText, Target
 } from "lucide-react";
@@ -187,7 +187,7 @@ export default function ProfileView() {
     if (isLoadingProfile) {
         return (
             <div className="flex h-[50vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <i className="fa-solid fa-spinner fa-spin text-3xl text-primary" />
             </div>
         );
     }
@@ -804,10 +804,9 @@ export default function ProfileView() {
                 )}
             </Tabs>
 
-            {/* ── Save Button ── */}
             <div className="flex justify-end pt-4">
                 <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
-                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+                    {isSaving ? <i className="fa-solid fa-spinner fa-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
                     Save
                 </Button>
             </div>

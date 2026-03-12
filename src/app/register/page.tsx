@@ -4,7 +4,8 @@ import React, { useState, useEffect, Suspense } from "react";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSignUp, useUser } from "@/hooks/use-auth";
-import { ArrowLeft, Check, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
+import { ArrowLeft, Check, CheckCircle2, ArrowRight } from "lucide-react";
+import LoadingView from "@/components/loading-view";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +32,16 @@ function RegistrationForm() {
 
     const totalSteps = 7;
     const [loading, setLoading] = useState(false);
+    const [slideIndex, setSlideIndex] = useState(0);
+    const [hasStarted, setHasStarted] = useState(false);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setSlideIndex((prev) => (prev + 1) % 5);
+            setHasStarted(true);
+        }, 750);
+        return () => clearInterval(timer);
+    }, []);
     const router = useRouter();
     const searchParams = useSearchParams();
     const { signUp, isLoaded: signUpLoaded } = useSignUp();
@@ -111,6 +122,48 @@ function RegistrationForm() {
         if (step > 1) setStep(step - 1);
     };
 
+    const renderIconContent = () => {
+        switch (slideIndex) {
+            case 0:
+                return (
+                    <div className={`w-full h-full flex items-center justify-center bg-rose-500 text-white ${hasStarted ? 'animate-in slide-in-from-right duration-500' : ''}`}>
+                        <i className="fa-solid fa-heart text-2xl"></i>
+                    </div>
+                );
+
+            case 1:
+                return (
+                    <div className="w-full h-full flex items-center justify-center bg-indigo-600 text-white animate-in duration-500">
+                        <span className="font-black text-2xl">NG</span>
+                    </div>
+                );
+
+            case 2:
+                return (
+                    <div className="w-full h-full flex items-center justify-center bg-sky-500 text-white animate-in slide-in-from-right duration-500">
+                        <i className="fa-solid fa-user-group text-2xl"></i>
+                    </div>
+                );
+
+            case 3:
+                return (
+                    <div className="w-full h-full flex items-center justify-center bg-emerald-500 text-white animate-in slide-in-from-right duration-500">
+                        <i className="fa-solid fa-chalkboard-user text-2xl"></i>
+                    </div>
+                );
+
+            case 4:
+                return (
+                    <div className="w-full h-full flex items-center justify-center bg-amber-500 text-white animate-in slide-in-from-right duration-500">
+                        <i className="fa-solid fa-seedling text-2xl"></i>
+                    </div>
+                );
+
+            default:
+                return null;
+        }
+    };
+
     // Shared UI Classes translated slightly to shadcn + lucide styling
     const headerTitleClass = "text-xl font-bold tracking-tight mb-1";
     const headerDescClass = "text-sm text-muted-foreground mb-6";
@@ -181,13 +234,27 @@ function RegistrationForm() {
                     })}
                 </div>
 
-                {/* Right Action (Next Placeholder) */}
-                <div className="w-10 h-10"></div>
+                {/* Right Action (Branding Slider) */}
+                <div className="w-14 h-14">
+                    <div className="w-full h-full rounded-2xl overflow-hidden shadow-xl shadow-indigo-600/30 transition-transform hover:scale-105 bg-white dark:bg-slate-900 relative">
+                        {/* Spinning Rings */}
+                        <div className="absolute -inset-2 rounded-xl border-2 border-slate-100 dark:border-slate-800"></div>
+                        <div className={`absolute -inset-2 rounded-xl border-2 border-t-transparent animate-spin transition-colors duration-500 ${slideIndex === 0 ? 'border-rose-500' :
+                            slideIndex === 1 ? 'border-indigo-600' :
+                                slideIndex === 2 ? 'border-sky-500' :
+                                    slideIndex === 3 ? 'border-emerald-500' :
+                                        'border-amber-500'
+                            }`}></div>
+                        <div className="relative z-10 w-full h-full">
+                            {renderIconContent()}
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Main Content Card */}
             <div className="flex-1 w-full flex items-center justify-center p-4 z-10">
-                <div className="w-full max-w-[480px] bg-card rounded-2xl shadow-xl border border-border p-6 md:p-8 transition-all duration-500">
+                <div className="w-full max-w-[480px] bg-card rounded-2xl shadow-xl border border-border p-6 md:p-10 transition-all duration-500">
 
                     {/* Form Step Headers */}
                     {step === 1 && (
@@ -498,7 +565,7 @@ function RegistrationForm() {
                             >
                                 {loading ? (
                                     <div className="flex items-center gap-3">
-                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        <i className="fa-solid fa-spinner fa-spin"></i>
                                         <span>Redirecting to Google...</span>
                                     </div>
                                 ) : !formData.inclusionAgreed ? (
@@ -564,11 +631,7 @@ function RegistrationForm() {
 
 export default function RegistrationPage() {
     return (
-        <Suspense fallback={
-            <div className="flex h-screen items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        }>
+        <Suspense fallback={<LoadingView />}>
             <RegistrationForm />
         </Suspense>
     );

@@ -51,8 +51,7 @@ import {
     Edit2,
     MoreHorizontal,
     Search,
-    LayoutGrid,
-    Loader2
+    LayoutGrid
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -213,7 +212,7 @@ export default function SkillsManagementView() {
     if (isLoading) {
         return (
             <div className="flex h-[calc(100vh-var(--header-height))] items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+                <i className="fa-solid fa-spinner fa-spin text-3xl text-slate-400" />
             </div>
         );
     }
@@ -378,7 +377,7 @@ export default function SkillsManagementView() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsCategoryModalOpen(false)}>Cancel</Button>
                         <Button onClick={handleSaveCategory} disabled={isActionLoading} className="bg-slate-950 hover:bg-slate-900 text-white min-w-[100px]">
-                            {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Category"}
+                            {isActionLoading ? <i className="fa-solid fa-spinner fa-spin" /> : "Save Category"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -411,7 +410,7 @@ export default function SkillsManagementView() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsSubCatModalOpen(false)}>Cancel</Button>
                         <Button onClick={handleSaveSubCat} disabled={isActionLoading} className="bg-slate-950 hover:bg-slate-900 text-white min-w-[100px]">
-                            {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Sub-Category"}
+                            {isActionLoading ? <i className="fa-solid fa-spinner fa-spin" /> : "Save Sub-Category"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

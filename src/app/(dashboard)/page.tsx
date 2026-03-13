@@ -16,6 +16,8 @@ import type { Profile } from "@/lib/supabase"
 
 export default async function Page() {
   const role = await getUserRole();
+  const user = await currentUser();
+  const firstName = user?.firstName || "";
 
   let serverProfile: Profile | null = null;
   let serverCompletion = 0;
@@ -23,7 +25,6 @@ export default async function Page() {
   let serverUniqRoles: string[] = [];
 
   if (role === 'Volunteer') {
-    const user = await currentUser();
     const publicMetadata = user?.publicMetadata || {};
 
     const [profile, dbCategories, loadedModules, loadedTasks, loadedBlocks, loadedProgress] = await Promise.all([
@@ -90,33 +91,36 @@ export default async function Page() {
         />
       ) : (
         <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-          <div className="relative overflow-hidden rounded-[12px] bg-slate-50 dark:bg-zinc-900/50 p-6 md:p-8 border border-slate-200 dark:border-zinc-800 shadow-sm group transition-all hover:bg-slate-100 dark:hover:bg-zinc-900/80">
-            <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity">
-              <ShieldCheck className="w-32 h-32 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex items-center gap-6">
-                <div className="p-4 rounded-[12px] bg-indigo-500 text-white shadow-lg shadow-indigo-500/20">
-                  <ShieldCheck className="w-7 h-7" />
+          <div className="relative overflow-hidden rounded-[12px] bg-slate-50 dark:bg-zinc-900/50 p-4 md:p-6 border border-slate-200 dark:border-zinc-800 shadow-sm group transition-all hover:bg-slate-100 dark:hover:bg-zinc-900/80">
+            <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-[10px] text-white shadow-lg ${
+                  role === 'Admin' ? 'bg-indigo-500 shadow-indigo-500/20' : 
+                  role === 'Program' ? 'bg-amber-500 shadow-amber-500/20' : 
+                  'bg-blue-500 shadow-blue-500/20'
+                }`}>
+                  {role === 'Admin' ? <ShieldCheck className="w-6 h-6" /> : 
+                   role === 'Program' ? <Zap className="w-6 h-6" /> : 
+                   <LayoutDashboard className="w-6 h-6" />}
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-3">
-                    {role} Control Center
-                    <span className="text-[10px] uppercase px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold tracking-widest">
-                      Live
-                    </span>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
+                    {firstName ? `Hi ${firstName} 👋` : `${role} Control Center`}
                   </h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-xl font-medium">
-                    You have administrative oversight of the volunteer lifecycle. Use the sidebar to manage skills, review onboarding tasks, or update user permissions.
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                    {role === 'Admin' && "You have administrative oversight of the volunteer lifecycle. Manage skills, review onboarding, and update permissions."}
+                    {role === 'Program' && "Lead and coordinate volunteer programs. Track progress and ensure impactful educational experiences."}
+                    {role === 'Operations' && "Maintain operational excellence. Monitor system health and streamline volunteer management workflows."}
+                    {!['Admin', 'Program', 'Operations'].includes(role || '') && "Welcome to NavGurukul's Volunteer Connect! Manage your dashboard and activities here."}
                   </p>
                 </div>
               </div>
-              <div className="flex flex-col items-start md:items-end gap-2 pr-4">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">System Health</div>
-                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                    OPERATIONAL
-                  </div>
+              <div className="flex flex-col items-start md:items-end gap-1 px-2">
+                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">System Status</div>
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  OPERATIONAL
+                </div>
               </div>
             </div>
           </div>

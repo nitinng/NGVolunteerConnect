@@ -69,19 +69,10 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
       title: "Onboarding Hub",
       url: "/onboarding",
       icon: BookOpenCheck,
-      items: isVolunteer ? [
+      items: [
         {
           title: "My Journey",
           url: "/onboarding",
-        }
-      ] : [
-        {
-          title: "My Journey",
-          url: "/onboarding",
-        },
-        {
-          title: "Skills Management",
-          url: "/skills",
         }
       ]
     },
@@ -104,8 +95,16 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
           url: "/users",
         },
         {
+          title: "Skills Management",
+          url: "/skills",
+        },
+        {
           title: "Onboarding Config",
           url: "/management/onboarding",
+        },
+        {
+          title: "Analytics Dashboard",
+          url: "/admin",
         }
       ]
     });

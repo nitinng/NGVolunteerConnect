@@ -250,6 +250,7 @@ export async function getUserTaskProgress(): Promise<TaskProgress[]> {
 
 export async function upsertUserTaskProgress(payload: Partial<TaskProgress>) {
     const supabase = await createServerClient();
+    const adminSupabase = createAdminClient(); // Use admin for profile update
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Unauthorized");
 
@@ -265,6 +266,34 @@ export async function upsertUserTaskProgress(payload: Partial<TaskProgress>) {
         .single();
     
     if (error) throw new Error(error.message);
+
+    // RECALCULATE AGGREGATE PERCENTAGE
+    // 1. Get total tasks
+    const { count: totalTasks } = await adminSupabase
+        .from('general_onboarding_tasks')
+        .select('*', { count: 'exact', head: true });
+
+    // 2. Get completed tasks for this user
+    const { count: completedTasks } = await adminSupabase
+        .from('general_onboarding_task_progress')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_completed', true);
+
+    const percentage = totalTasks && totalTasks > 0 
+        ? Math.round(((completedTasks || 0) / totalTasks) * 100) 
+        : 0;
+
+    // 3. Update profile
+    await adminSupabase
+        .from('profiles')
+        .update({ 
+            onboarding_percentage: percentage,
+            onboarding_completed: percentage === 100 
+        })
+        .eq('auth_user_id', user.id);
+
     revalidatePath("/onboarding");
+    revalidatePath("/admin");
     return data;
 }

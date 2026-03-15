@@ -20,7 +20,7 @@ import {
   Settings
 } from "lucide-react"
 
-import { NavMain } from "@/components/nav-main"
+import { NavMain, NavItem } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import {
   Sidebar,
@@ -58,32 +58,29 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
   const activeRole = role || 'Volunteer';
   const isVolunteer = activeRole === 'Volunteer';
 
-  const navMain = [
+  const navMain: NavItem[] = [
     {
       title: "Dashboard",
       url: "/",
       icon: LayoutDashboard,
       isActive: true,
     },
-    {
-      title: "Onboarding Hub",
-      url: "/onboarding",
-      icon: BookOpenCheck,
-      items: [
-        {
-          title: "My Journey",
-          url: "/onboarding",
-        }
-      ]
-    },
-    {
-      title: "My Profile",
-      url: "/profile",
-      icon: UserCircle,
-    }
   ];
 
-  // Admins & Program staff get User Management
+  // Top-level Onboarding (for the user's own journey)
+  navMain.push({
+    title: "Onboarding",
+    url: "/onboarding",
+    icon: BookOpenCheck,
+    items: [
+      {
+        title: "My Journey",
+        url: "/onboarding",
+      }
+    ]
+  });
+
+  // Admins & Program staff get Management section
   if (activeRole !== 'Volunteer') {
     navMain.push({
       title: "Management",
@@ -91,16 +88,32 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
       icon: Settings2,
       items: [
         {
-          title: "User Registry",
-          url: "/users",
+          title: "Users",
+          url: "#",
+          items: [
+            {
+              title: "User Registry",
+              url: "/users-registry",
+            },
+            {
+              title: "User Trends",
+              url: "/users-trends",
+            },
+          ]
         },
         {
-          title: "Skills Management",
-          url: "/skills",
-        },
-        {
-          title: "Onboarding Config",
-          url: "/management/onboarding",
+          title: "Onboarding",
+          url: "#",
+          items: [
+            {
+              title: "Skills Management",
+              url: "/skills",
+            },
+            {
+              title: "Onboarding Config",
+              url: "/management/onboarding",
+            },
+          ]
         },
         {
           title: "Departments",
@@ -113,6 +126,13 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
       ]
     });
   }
+
+  // Everyone gets Profile at the bottom of the main nav
+  navMain.push({
+    title: "My Profile",
+    url: "/profile",
+    icon: UserCircle,
+  });
 
   return (
     <Sidebar

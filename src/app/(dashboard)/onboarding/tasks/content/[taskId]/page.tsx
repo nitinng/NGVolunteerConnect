@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { getGeneralOnboardingTasks, getContentBlocks, GeneralTask, ContentBlock, getUserResponses, upsertUserResponse, getUserTaskProgress, upsertUserTaskProgress, TaskProgress } from "@/app/actions/general-onboarding-actions";
+import { getGeneralOnboardingModules, getGeneralOnboardingTasks, getContentBlocks, GeneralTask, ContentBlock, getUserResponses, upsertUserResponse, getUserTaskProgress, upsertUserTaskProgress, TaskProgress } from "@/app/actions/general-onboarding-actions";
+import { slugify } from "@/lib/utils";
 
 export default function ContentBlockPage({ params }: { params: Promise<{ taskId: string }> }) {
-    const { taskId } = use(params);
+    const { taskId: taskSlug } = use(params);
     const router = useRouter();
 
     const [task, setTask] = useState<GeneralTask | null>(null);
@@ -28,7 +29,7 @@ export default function ContentBlockPage({ params }: { params: Promise<{ taskId:
         setCompletedPages(newCompleted);
         try {
             await upsertUserTaskProgress({
-                task_id: taskId,
+                task_id: task?.id || taskSlug,
                 completed_pages: newCompleted,
                 is_completed: false
             });
@@ -38,18 +39,23 @@ export default function ContentBlockPage({ params }: { params: Promise<{ taskId:
     useEffect(() => {
         const load = async () => {
             try {
-                const tsks = await getGeneralOnboardingTasks();
-                const currentTask = tsks.find(t => t.id === taskId);
+                const [tsks, allModules] = await Promise.all([
+                    getGeneralOnboardingTasks(),
+                    getGeneralOnboardingModules()
+                ]);
+                
+                const currentTask = tsks.find(t => slugify(t.title) === taskSlug || t.id === taskSlug);
                 setTask(currentTask || null);
 
                 if (currentTask) {
+                    const actualTaskId = currentTask.id;
                     const [fetchedBlocks, fetchedResponses, allProgresses] = await Promise.all([
-                        getContentBlocks(taskId),
-                        getUserResponses(taskId),
+                        getContentBlocks(actualTaskId),
+                        getUserResponses(actualTaskId),
                         getUserTaskProgress()
                     ]);
                     
-                    const myProgress = allProgresses.find(p => p.task_id === taskId);
+                    const myProgress = allProgresses.find(p => p.task_id === actualTaskId);
                     if (myProgress && myProgress.completed_pages) {
                         setCompletedPages(myProgress.completed_pages);
                     }
@@ -69,7 +75,7 @@ export default function ContentBlockPage({ params }: { params: Promise<{ taskId:
             }
         };
         load();
-    }, [taskId]);
+    }, [taskSlug]);
 
     // Group blocks by pages based on "page_behavior" = "new_page"
     const pages = useMemo(() => {
@@ -110,7 +116,7 @@ export default function ContentBlockPage({ params }: { params: Promise<{ taskId:
             setCurrentPageIndex(nextUnread);
             setHasInitializedPage(true);
         }
-    }, [pages.length, taskId, hasInitializedPage]);
+    }, [pages.length, taskSlug, hasInitializedPage]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -144,11 +150,12 @@ export default function ContentBlockPage({ params }: { params: Promise<{ taskId:
     const allSubmittedOnCurrentPage = currentPageInteractiveBlocks.every(b => responses[b.id]?.status === 'submitted');
 
     const saveResponse = async (blockId: string, value: any, status: 'draft' | 'submitted' = 'draft') => {
+        if (!task) return;
         const payload = { ...value, status };
         setResponses(prev => ({ ...prev, [blockId]: payload }));
         try {
             await upsertUserResponse({
-                task_id: taskId,
+                task_id: task.id,
                 block_id: blockId,
                 response_value: payload
             });
@@ -164,14 +171,20 @@ export default function ContentBlockPage({ params }: { params: Promise<{ taskId:
         
         try {
             await upsertUserTaskProgress({
-                task_id: taskId,
+                task_id: task.id,
                 completed_pages: newCompleted,
                 is_completed: true,
                 completed_at: new Date().toISOString()
             });
-        } catch(e) { console.error("Failed saving final completion status", e); }
-
-        router.push(`/onboarding/tasks/${task.module_id}`);
+            
+            const allModules = await getGeneralOnboardingModules();
+            const parentModule = allModules.find(m => m.id === task.module_id);
+            const modulePath = parentModule ? `/onboarding/tasks/${slugify(parentModule.title)}` : "/onboarding";
+            router.push(modulePath);
+        } catch(e) { 
+            console.error("Failed saving final completion status", e); 
+            router.push("/onboarding");
+        }
     };
 
     const handleNextPage = () => {
@@ -197,7 +210,15 @@ export default function ContentBlockPage({ params }: { params: Promise<{ taskId:
                 <Button 
                     variant="ghost" 
                     size="sm" 
-                    onClick={() => router.push(`/onboarding/tasks/${task.module_id}`)}
+                    onClick={async () => {
+                        if (task) {
+                            const allModules = await getGeneralOnboardingModules();
+                            const parentModule = allModules.find(m => m.id === task.module_id);
+                            router.push(parentModule ? `/onboarding/tasks/${slugify(parentModule.title)}` : "/onboarding");
+                        } else {
+                            router.push("/onboarding");
+                        }
+                    }}
                     className="h-8 px-2 text-slate-500"
                 >
                     <ArrowLeft className="w-4 h-4 mr-2" />

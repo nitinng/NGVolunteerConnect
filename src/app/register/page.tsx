@@ -10,6 +10,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthFooter } from "@/components/auth-footer";
+import { MiniLoader } from "@/components/mini-loader";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+
+
+
 
 function RegistrationForm() {
     const [step, setStep] = useState(1);
@@ -30,23 +42,104 @@ function RegistrationForm() {
         inclusionAgreed: false,
     });
 
+    const [countries, setCountries] = useState<string[]>([]);
+    const [states, setStates] = useState<string[]>([]);
+    const [cities, setCities] = useState<string[]>([]);
+    const [loadingCountries, setLoadingCountries] = useState(false);
+    const [loadingStates, setLoadingStates] = useState(false);
+    const [loadingCities, setLoadingCities] = useState(false);
+
+
     const totalSteps = 7;
     const [loading, setLoading] = useState(false);
-    const [slideIndex, setSlideIndex] = useState(0);
-    const [hasStarted, setHasStarted] = useState(false);
-
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setSlideIndex((prev) => (prev + 1) % 5);
-            setHasStarted(true);
-        }, 750);
-        return () => clearInterval(timer);
-    }, []);
     const router = useRouter();
+
     const searchParams = useSearchParams();
     const { signUp, isLoaded: signUpLoaded } = useSignUp();
     const { user, isLoaded: userLoaded } = useUser();
     const isLoaded = signUpLoaded && userLoaded;
+
+    // Fetch countries on mount
+    useEffect(() => {
+        const loadCountries = async () => {
+            setLoadingCountries(true);
+            try {
+                const res = await fetch("https://countriesnow.space/api/v0.1/countries");
+                const data = await res.json();
+                const list = data.data.map((c: any) => c.country).sort();
+                setCountries(list);
+                // Set default to India if available
+                if (list.includes("India") && !formData.country) {
+                    setFormData(prev => ({ ...prev, country: "India" }));
+                }
+            } catch (err) {
+                console.error("Failed to fetch countries", err);
+            } finally {
+                setLoadingCountries(false);
+            }
+        };
+        loadCountries();
+    }, []);
+
+    // Fetch states when country changes
+    useEffect(() => {
+        if (!formData.country) {
+            setStates([]);
+            return;
+        }
+        const loadStates = async () => {
+            setLoadingStates(true);
+            try {
+                const res = await fetch("https://countriesnow.space/api/v0.1/countries/states", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ country: formData.country }),
+                });
+                const data = await res.json();
+                if (data.data?.states) {
+                    setStates(data.data.states.map((s: any) => s.name).sort());
+                } else {
+                    setStates([]);
+                }
+            } catch (err) {
+                console.error("Failed to fetch states", err);
+                setStates([]);
+            } finally {
+                setLoadingStates(false);
+            }
+        };
+        loadStates();
+    }, [formData.country]);
+
+    // Fetch cities when state changes
+    useEffect(() => {
+        if (!formData.state || !formData.country) {
+            setCities([]);
+            return;
+        }
+        const loadCities = async () => {
+            setLoadingCities(true);
+            try {
+                const res = await fetch("https://countriesnow.space/api/v0.1/countries/state/cities", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ country: formData.country, state: formData.state }),
+                });
+                const data = await res.json();
+                if (data.data) {
+                    setCities(data.data.sort());
+                } else {
+                    setCities([]);
+                }
+            } catch (err) {
+                console.error("Failed to fetch cities", err);
+                setCities([]);
+            } finally {
+                setLoadingCities(false);
+            }
+        };
+        loadCities();
+    }, [formData.state, formData.country]);
 
     // Show warning if redirected here because user tried to sign in without an account
     useEffect(() => {
@@ -122,54 +215,14 @@ function RegistrationForm() {
         if (step > 1) setStep(step - 1);
     };
 
-    const renderIconContent = () => {
-        switch (slideIndex) {
-            case 0:
-                return (
-                    <div className={`w-full h-full flex items-center justify-center bg-rose-500 text-white ${hasStarted ? 'animate-in slide-in-from-right duration-500' : ''}`}>
-                        <i className="fa-solid fa-heart text-2xl"></i>
-                    </div>
-                );
 
-            case 1:
-                return (
-                    <div className="w-full h-full flex items-center justify-center bg-indigo-600 text-white animate-in duration-500">
-                        <span className="font-black text-2xl">NG</span>
-                    </div>
-                );
-
-            case 2:
-                return (
-                    <div className="w-full h-full flex items-center justify-center bg-sky-500 text-white animate-in slide-in-from-right duration-500">
-                        <i className="fa-solid fa-user-group text-2xl"></i>
-                    </div>
-                );
-
-            case 3:
-                return (
-                    <div className="w-full h-full flex items-center justify-center bg-emerald-500 text-white animate-in slide-in-from-right duration-500">
-                        <i className="fa-solid fa-chalkboard-user text-2xl"></i>
-                    </div>
-                );
-
-            case 4:
-                return (
-                    <div className="w-full h-full flex items-center justify-center bg-amber-500 text-white animate-in slide-in-from-right duration-500">
-                        <i className="fa-solid fa-seedling text-2xl"></i>
-                    </div>
-                );
-
-            default:
-                return null;
-        }
-    };
 
     // Shared UI Classes translated slightly to shadcn + lucide styling
     const headerTitleClass = "text-xl font-bold tracking-tight mb-1";
     const headerDescClass = "text-sm text-muted-foreground mb-6";
 
     const verticalOptionClass = (isSelected: boolean) => `
-        w-full p-4 mb-3 border rounded-xl text-left transition-all duration-200 group flex items-center justify-between
+        w-full p-3 mb-3 border rounded-lg text-left transition-all duration-200 group flex items-center justify-between
         ${isSelected
             ? "border-primary bg-primary/5 ring-1 ring-primary"
             : "border-border hover:border-primary/40 hover:bg-accent/50"
@@ -187,7 +240,7 @@ function RegistrationForm() {
             </div>
 
             {/* Top Navigation */}
-            <div className="w-full max-w-7xl px-8 py-10 flex items-center justify-between z-10">
+            <div className="w-full max-w-7xl px-6 py-8 flex items-center justify-between z-10">
                 {/* Brand & Back Button */}
                 <div className="flex items-center gap-6">
                     <Button
@@ -195,7 +248,7 @@ function RegistrationForm() {
                         size="icon"
                         onClick={prevStep}
                         disabled={step === 1}
-                        className="rounded-full shadow-sm disabled:opacity-0 transition-opacity"
+                        className="rounded-lg shadow-sm disabled:opacity-0 transition-opacity"
                     >
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
@@ -236,25 +289,13 @@ function RegistrationForm() {
 
                 {/* Right Action (Branding Slider) */}
                 <div className="w-14 h-14">
-                    <div className="w-full h-full rounded-2xl overflow-hidden shadow-xl shadow-indigo-600/30 transition-transform hover:scale-105 bg-white dark:bg-slate-900 relative">
-                        {/* Spinning Rings */}
-                        <div className="absolute -inset-2 rounded-xl border-2 border-slate-100 dark:border-slate-800"></div>
-                        <div className={`absolute -inset-2 rounded-xl border-2 border-t-transparent animate-spin transition-colors duration-500 ${slideIndex === 0 ? 'border-rose-500' :
-                            slideIndex === 1 ? 'border-indigo-600' :
-                                slideIndex === 2 ? 'border-sky-500' :
-                                    slideIndex === 3 ? 'border-emerald-500' :
-                                        'border-amber-500'
-                            }`}></div>
-                        <div className="relative z-10 w-full h-full">
-                            {renderIconContent()}
-                        </div>
-                    </div>
+                    <MiniLoader />
                 </div>
             </div>
 
             {/* Main Content Card */}
-            <div className="flex-1 w-full flex items-center justify-center p-4 z-10">
-                <div className="w-full max-w-[480px] bg-card rounded-2xl shadow-xl border border-border p-6 md:p-10 transition-all duration-500">
+            <div className="flex-1 w-full flex items-center justify-center p-2 z-10">
+                <div className="w-full max-w-[480px] bg-card rounded-lg shadow-xl border border-border p-4 md:p-8 transition-all duration-500">
 
                     {/* Form Step Headers */}
                     {step === 1 && (
@@ -264,7 +305,7 @@ function RegistrationForm() {
                                 This helps us route you to the right campus or team based on where you reside.
                             </p>
 
-                            <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                            <div className="max-h-[340px] overflow-y-auto p-2 custom-scrollbar space-y-4">
                                 <div className="space-y-1.5">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
                                         Full Name
@@ -274,45 +315,82 @@ function RegistrationForm() {
                                         placeholder="Enter your name"
                                         value={formData.fullName}
                                         onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                                        className="rounded-xl py-6"
+                                        className="rounded-lg py-6"
                                     />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                        <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
-                                            City
-                                        </Label>
-                                        <Input
-                                            type="text"
-                                            placeholder="City"
-                                            value={formData.city}
-                                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                            className="rounded-xl py-6"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
-                                            State
-                                        </Label>
-                                        <Input
-                                            type="text"
-                                            placeholder="State"
-                                            value={formData.state}
-                                            onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                                            className="rounded-xl py-6"
-                                        />
-                                    </div>
-                                </div>
+
                                 <div className="space-y-1.5">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
                                         Country
                                     </Label>
-                                    <Input
-                                        type="text"
-                                        value={formData.country}
-                                        onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                                        className="rounded-xl py-6"
-                                    />
+                                    <Select 
+                                        value={formData.country} 
+                                        onValueChange={(val) => setFormData({ ...formData, country: val, state: "", city: "" })}
+                                    >
+                                        <SelectTrigger className="w-full rounded-lg py-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-indigo-500/20 text-sm font-medium">
+                                            <SelectValue placeholder={loadingCountries ? "Loading countries..." : "Select Country"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {countries.map((c) => (
+                                                <SelectItem key={c} value={c}>
+                                                    {c}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
+                                            State
+                                        </Label>
+                                        <Select 
+                                            value={formData.state} 
+                                            onValueChange={(val) => setFormData({ ...formData, state: val, city: "" })}
+                                            disabled={!formData.country || loadingStates}
+                                        >
+                                            <SelectTrigger className="w-full rounded-lg py-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-indigo-500/20 text-sm font-medium">
+                                                <SelectValue placeholder={loadingStates ? "Loading..." : "Select State"} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {states.length > 0 ? (
+                                                    states.map((s) => (
+                                                        <SelectItem key={s} value={s}>
+                                                            {s}
+                                                        </SelectItem>
+                                                    ))
+                                                ) : (
+                                                    <SelectItem value="none" disabled>No states found</SelectItem>
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
+                                            City
+                                        </Label>
+                                        <Select 
+                                            value={formData.city} 
+                                            onValueChange={(val) => setFormData({ ...formData, city: val })}
+                                            disabled={!formData.state || loadingCities}
+                                        >
+                                            <SelectTrigger className="w-full rounded-lg py-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-indigo-500/20 text-sm font-medium">
+                                                <SelectValue placeholder={loadingCities ? "Loading..." : "Select City"} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {cities.length > 0 ? (
+                                                    cities.map((c) => (
+                                                        <SelectItem key={c} value={c}>
+                                                            {c}
+                                                        </SelectItem>
+                                                    ))
+                                                ) : (
+                                                    <SelectItem value="none" disabled>No cities found</SelectItem>
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -324,7 +402,7 @@ function RegistrationForm() {
                             <p className={headerDescClass}>
                                 Select the category that matches your current professional standing.
                             </p>
-                            <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="max-h-[260px] overflow-y-auto p-2 custom-scrollbar">
                                 {[
                                     { id: "Student", sub: "I am currently studying" },
                                     { id: "Working Professional", sub: "I have a full-time job" },
@@ -366,7 +444,7 @@ function RegistrationForm() {
                             <p className={headerDescClass}>
                                 Tell us how many years you've spent in your professional journey.
                             </p>
-                            <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="max-h-[260px] overflow-y-auto p-2 custom-scrollbar">
                                 {[
                                     { id: "0–1", label: "Beginner", desc: "Fresh graduate or starting out" },
                                     { id: "1–3", label: "Junior", desc: "Working on core skills" },
@@ -388,7 +466,7 @@ function RegistrationForm() {
                                                 >
                                                     {opt.label}
                                                 </span>
-                                                <span className="text-[10px] px-1.5 bg-secondary text-secondary-foreground rounded-md font-bold py-0.5">
+                                                <span className="text-[10px] px-1.5 bg-secondary text-secondary-foreground rounded-lg font-bold py-0.5">
                                                     {opt.id} yrs
                                                 </span>
                                             </div>
@@ -439,7 +517,7 @@ function RegistrationForm() {
                             <p className={headerDescClass}>
                                 Source tracking helps us acknowledge our partners and communities.
                             </p>
-                            <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="max-h-[260px] overflow-y-auto p-2 custom-scrollbar">
                                 {[
                                     "LinkedIn",
                                     "Instagram",
@@ -477,7 +555,7 @@ function RegistrationForm() {
                                                         setFormData({ ...formData, sourceOther: e.target.value })
                                                     }
                                                     autoFocus
-                                                    className="rounded-xl py-6"
+                                                    className="rounded-lg py-6"
                                                 />
                                             </div>
                                         )}
@@ -537,13 +615,13 @@ function RegistrationForm() {
                                 onClick={() =>
                                     setFormData({ ...formData, inclusionAgreed: !formData.inclusionAgreed })
                                 }
-                                className={`p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 flex items-start gap-4 mb-8 ${formData.inclusionAgreed
+                                className={`p-5 rounded-lg border-2 cursor-pointer transition-all duration-300 flex items-start gap-4 mb-8 ${formData.inclusionAgreed
                                     ? "bg-primary/5 border-primary/50"
                                     : "bg-muted/50 border-border"
                                     }`}
                             >
                                 <div
-                                    className={`mt-0.5 w-5 h-5 rounded-md flex-shrink-0 flex items-center justify-center border-2 transition-all ${formData.inclusionAgreed
+                                    className={`mt-0.5 w-5 h-5 rounded-lg flex-shrink-0 flex items-center justify-center border-2 transition-all ${formData.inclusionAgreed
                                         ? "bg-primary border-primary shadow-sm"
                                         : "border-muted-foreground/30 bg-background"
                                         }`}
@@ -556,36 +634,32 @@ function RegistrationForm() {
                                 </p>
                             </div>
 
-                            <Button
+                            <button
                                 onClick={handleGoogleRegistration}
                                 disabled={!formData.inclusionAgreed || loading}
-                                size="lg"
-                                variant="outline"
-                                className={`w-full rounded-xl font-bold py-6 text-base ${(!formData.inclusionAgreed || loading) ? 'bg-muted text-muted-foreground border-border' : user ? "bg-primary text-primary-foreground hover:bg-primary/90 border-transparent shadow-lg hover:shadow-xl" : "bg-white text-black hover:bg-slate-50 dark:bg-white dark:text-black dark:hover:bg-gray-100 shadow-lg hover:shadow-xl border-slate-200"}`}
+                                className="w-full flex items-center justify-center gap-2.5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 py-3 rounded-lg font-bold text-slate-700 dark:text-slate-200 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all active:scale-[0.98] disabled:opacity-50 shadow-md hover:shadow-lg shadow-slate-200/50 dark:shadow-none"
                             >
                                 {loading ? (
                                     <div className="flex items-center gap-3">
                                         <i className="fa-solid fa-spinner fa-spin"></i>
-                                        <span>Redirecting to Google...</span>
+                                        <span className="text-sm">Processing...</span>
                                     </div>
                                 ) : !formData.inclusionAgreed ? (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
                                         <span>Accept Shared Values to Continue</span>
                                     </div>
-                                ) : user ? (
-                                    <span>Complete Registration</span>
                                 ) : (
-                                    <div className="flex items-center justify-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-5 h-5">
-                                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                                    <div className="flex items-center justify-center gap-2.5">
+                                        <svg viewBox="0 0 24 24" width="18" height="18">
+                                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                            <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z" />
+                                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                                         </svg>
-                                        <span>Sign up with Google</span>
+                                        <span className="text-sm">{user ? "Complete Registration" : "Continue with Google"}</span>
                                     </div>
                                 )}
-                            </Button>
+                            </button>
 
 
                         </div>
@@ -609,7 +683,7 @@ function RegistrationForm() {
                             <Button
                                 onClick={nextStep}
                                 disabled={!isStepValid()}
-                                className="rounded-xl px-6"
+                                className="rounded-lg px-6"
                             >
                                 Next
                                 <ArrowRight className="h-4 w-4 ml-2 text-primary-foreground" />
@@ -620,11 +694,7 @@ function RegistrationForm() {
             </div>
 
             {/* Support Info */}
-            <div className="py-8 z-10">
-                <p className="text-muted-foreground text-[10px] font-black uppercase tracking-[0.3em]">
-                    Navgurukul Volunteer Connect
-                </p>
-            </div>
+            <AuthFooter />
         </div>
     );
 }

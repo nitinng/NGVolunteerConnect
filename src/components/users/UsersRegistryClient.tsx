@@ -57,6 +57,7 @@ export function UsersRegistryClient({ initialUsers, currentUserId, actorRole, ac
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [inviteEmail, setInviteEmail] = useState("");
     const [inviteRole, setInviteRole] = useState("Volunteer");
+    const [inviteSelectedDepts, setInviteSelectedDepts] = useState<string[]>([]);
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
     // -- Role/Dept Editing State --
@@ -116,13 +117,20 @@ export function UsersRegistryClient({ initialUsers, currentUserId, actorRole, ac
     });
 
     const handleInvite = async () => {
+        const isProgOrOps = ["Program", "Operations"].includes(inviteRole);
+        if (isProgOrOps && inviteSelectedDepts.length === 0) {
+            toast.error("At least one department is required for Program/Operations roles.");
+            return;
+        }
+
         setLoadingAction("invite");
-        const res = await inviteUserAction(inviteEmail, inviteRole);
+        const res = await inviteUserAction(inviteEmail, inviteRole, inviteSelectedDepts);
         if (res.success) {
             toast.success("Invitation sent successfully!");
             setIsInviteOpen(false);
             setInviteEmail("");
             setInviteRole("Volunteer");
+            setInviteSelectedDepts([]);
         } else {
             toast.error(res.error || "Failed to invite user");
         }
@@ -330,7 +338,12 @@ export function UsersRegistryClient({ initialUsers, currentUserId, actorRole, ac
                                 </div>
                                 <div className="grid gap-2">
                                     <label className="text-sm font-semibold">Initial Role</label>
-                                    <Select value={inviteRole} onValueChange={setInviteRole}>
+                                    <Select value={inviteRole} onValueChange={(val) => {
+                                        setInviteRole(val);
+                                        if (!["Program", "Operations"].includes(val)) {
+                                            setInviteSelectedDepts([]);
+                                        }
+                                    }}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select a role" />
                                         </SelectTrigger>
@@ -341,6 +354,39 @@ export function UsersRegistryClient({ initialUsers, currentUserId, actorRole, ac
                                         </SelectContent>
                                     </Select>
                                 </div>
+
+                                {["Program", "Operations"].includes(inviteRole) && (
+                                    <div className="grid gap-3">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Initial Departments <span className="text-rose-500">*</span></Label>
+                                        <div className="border rounded-lg p-4 bg-muted/20 max-h-[160px] overflow-y-auto space-y-3">
+                                            {availableDepartments.map((dept) => (
+                                                <div key={dept.id} className="flex items-center space-x-3">
+                                                    <Checkbox
+                                                        id={`invite-dept-${dept.id}`}
+                                                        checked={inviteSelectedDepts.includes(dept.name)}
+                                                        onCheckedChange={(checked) => {
+                                                            if (checked) {
+                                                                setInviteSelectedDepts([...inviteSelectedDepts, dept.name]);
+                                                            } else {
+                                                                setInviteSelectedDepts(inviteSelectedDepts.filter(d => d !== dept.name));
+                                                            }
+                                                        }}
+                                                    />
+                                                    <Label 
+                                                        htmlFor={`invite-dept-${dept.id}`} 
+                                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                                    >
+                                                        {dept.name}
+                                                        {dept.name === 'ORG' && <Badge variant="secondary" className="ml-2 text-[10px] h-4">Management</Badge>}
+                                                    </Label>
+                                                </div>
+                                            ))}
+                                            {availableDepartments.length === 0 && (
+                                                <p className="text-xs text-muted-foreground italic">No departments available.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <DialogFooter>
                                 <div className="w-full flex justify-between gap-3">

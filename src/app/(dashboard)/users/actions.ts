@@ -142,11 +142,18 @@ export async function updateUserRoleAction(userId: string, role: string, departm
     }
 }
 
-export async function inviteUserAction(emailAddress: string, role: string) {
+export async function inviteUserAction(emailAddress: string, role: string, departments?: string[]) {
     const supabase = createAdminClient();
     const actor = await getActor(supabase);
 
     const isActorOrgManager = actor.role === "Program" && actor.departments.includes("ORG");
+
+    // Validation: Program/Operations MUST have at least one department
+    if (["Program", "Operations"].includes(role)) {
+        if (!departments || departments.length === 0) {
+            return { success: false, error: "Program and Operations roles must have at least one department assigned." };
+        }
+    }
 
     // Only root admin can send an Admin invite
     if (role === "Admin" && !actor.isRoot) {
@@ -163,9 +170,14 @@ export async function inviteUserAction(emailAddress: string, role: string) {
         return { success: false, error: "Program managers can only invite Volunteers." };
     }
 
+    // ORG manager cannot assign ORG dept during invite either
+    if (isActorOrgManager && departments?.includes("ORG")) {
+        return { success: false, error: "You do not have permission to assign the ORG department." };
+    }
+
     try {
         await supabase.auth.admin.inviteUserByEmail(emailAddress, {
-            data: { role },
+            data: { role, departments: departments || [] },
         });
         revalidatePath("/", "layout");
         return { success: true };

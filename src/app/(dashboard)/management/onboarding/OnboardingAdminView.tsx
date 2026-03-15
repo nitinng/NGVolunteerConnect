@@ -24,9 +24,11 @@ import {
     upsertContentBlock,
     deleteContentBlock,
     reorderContentBlocks,
-    ContentBlock
+    ContentBlock,
+    getDepartments
 } from "@/app/actions/general-onboarding-actions";
 import { Target, ListTodo, Plus, Trash2, Edit2, GripVertical, CheckCircle2 } from "lucide-react";
+import * as Icons from "lucide-react";
 
 export default function OnboardingAdminView() {
     const [modules, setModules] = useState<GeneralModule[]>([]);
@@ -42,6 +44,8 @@ export default function OnboardingAdminView() {
     const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
     const [editingBlock, setEditingBlock] = useState<Partial<ContentBlock> | null>(null);
 
+    const [departments, setDepartments] = useState<any[]>([]);
+
     const [draggedModuleId, setDraggedModuleId] = useState<string | null>(null);
     const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
     const [draggedBlockId, setDraggedBlockId] = useState<string | null>(null);
@@ -51,10 +55,12 @@ export default function OnboardingAdminView() {
         try {
             const mods = await getGeneralOnboardingModules();
             const tsks = await getGeneralOnboardingTasks();
+            const deps = await getDepartments();
             setModules(mods);
             setTasks(tsks);
+            setDepartments(deps);
         } catch (error: any) {
-            toast.error("Failed to load generic onboarding data", { description: error.message });
+            toast.error("Failed to load onboarding data", { description: error.message });
         } finally {
             setIsLoading(false);
         }
@@ -279,8 +285,46 @@ export default function OnboardingAdminView() {
                                         <Input value={editingModule.title || ''} onChange={e => setEditingModule({ ...editingModule, title: e.target.value })} placeholder="e.g. Organization" />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-xs font-bold text-slate-700">Icon (lucide-react name)</label>
-                                        <Input value={editingModule.icon || ''} onChange={e => setEditingModule({ ...editingModule, icon: e.target.value })} placeholder="e.g. Building2" />
+                                        <label className="text-xs font-bold text-slate-700">Icon</label>
+                                        <Select value={editingModule.icon || 'BookOpen'} onValueChange={v => setEditingModule({ ...editingModule, icon: v })}>
+                                            <SelectTrigger>
+                                                <div className="flex items-center gap-2">
+                                                    {(() => {
+                                                        const Icon = (Icons as any)[editingModule.icon || "BookOpen"] || Icons.BookOpen;
+                                                        return <Icon className="w-4 h-4" />;
+                                                    })()}
+                                                    <SelectValue placeholder="Select icon" />
+                                                </div>
+                                            </SelectTrigger>
+                                            <SelectContent className="max-h-[300px]">
+                                                {[
+                                                    { id: 'Building2', name: 'Building / Org' },
+                                                    { id: 'Target', name: 'Target / Mission' },
+                                                    { id: 'GraduationCap', name: 'Education' },
+                                                    { id: 'Heart', name: 'Values / Heart' },
+                                                    { id: 'Puzzle', name: 'Puzzle / Logic' },
+                                                    { id: 'ListTodo', name: 'Tasks / List' },
+                                                    { id: 'ShieldCheck', name: 'Safety / Trust' },
+                                                    { id: 'PlayCircle', name: 'Video / Media' },
+                                                    { id: 'BookOpen', name: 'Reading / Book' },
+                                                    { id: 'UserCircle', name: 'Profile / User' },
+                                                    { id: 'Sparkles', name: 'Tips / Highlights' },
+                                                    { id: 'FileText', name: 'Document' },
+                                                    { id: 'MessageSquare', name: 'Chat / Feedback' },
+                                                    { id: 'Users2', name: 'Team / Community' }
+                                                ].map(ico => {
+                                                    const Preview = (Icons as any)[ico.id] || Icons.BookOpen;
+                                                    return (
+                                                        <SelectItem key={ico.id} value={ico.id}>
+                                                            <div className="flex items-center gap-2">
+                                                                <Preview className="w-4 h-4" />
+                                                                <span>{ico.name}</span>
+                                                            </div>
+                                                        </SelectItem>
+                                                    );
+                                                })}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-slate-700">Color Variant</label>
@@ -297,6 +341,30 @@ export default function OnboardingAdminView() {
                                             </SelectContent>
                                         </Select>
                                     </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-700">Module Scope</label>
+                                        <Select 
+                                            value={editingModule.type === 'General' ? 'General' : (editingModule.department_id || '')} 
+                                            onValueChange={v => {
+                                                if (v === 'General') {
+                                                    setEditingModule({ ...editingModule, type: 'General', department_id: null });
+                                                } else {
+                                                    setEditingModule({ ...editingModule, type: 'Specific', department_id: v });
+                                                }
+                                            }}
+                                        >
+                                            <SelectTrigger><SelectValue placeholder="Select scope" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="General">ORG (General)</SelectItem>
+                                                {departments
+                                                    .filter(d => d.name.toUpperCase() !== 'ORG')
+                                                    .map(d => (
+                                                        <SelectItem key={d.id} value={d.id}>{d.name} (Department)</SelectItem>
+                                                    ))
+                                                }
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                     <div className="space-y-2 md:col-span-2">
                                         <label className="text-xs font-bold text-slate-700">Description</label>
                                         <Textarea value={editingModule.description || ''} onChange={e => setEditingModule({ ...editingModule, description: e.target.value })} />
@@ -309,7 +377,7 @@ export default function OnboardingAdminView() {
                             </CardFooter>
                         </Card>
                     ) : (
-                        <Button className="w-auto self-start gap-2" onClick={() => setEditingModule({ color: 'indigo', icon: 'BookOpen' })}>
+                        <Button className="w-auto self-start gap-2" onClick={() => setEditingModule({ color: 'indigo', icon: 'BookOpen', type: 'General' })}>
                             <Plus className="w-4 h-4" /> Add New Module
                         </Button>
                     )}
@@ -320,6 +388,7 @@ export default function OnboardingAdminView() {
                                 <TableRow>
                                     <TableHead className="w-[80px]">Order</TableHead>
                                     <TableHead>Module</TableHead>
+                                    <TableHead>Scope</TableHead>
                                     <TableHead className="hidden md:table-cell">Description</TableHead>
                                     <TableHead className="w-[120px]">Color</TableHead>
                                     <TableHead className="w-[100px] text-right">Actions</TableHead>
@@ -342,6 +411,11 @@ export default function OnboardingAdminView() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="font-medium">{mod.title}</TableCell>
+                                        <TableCell>
+                                            <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider ${mod.type === 'General' ? 'bg-slate-100 text-slate-600' : 'bg-indigo-100 text-indigo-700'}`}>
+                                                {mod.type === 'General' ? 'Org' : (departments.find(d => d.id === mod.department_id)?.name || 'Dept')}
+                                            </span>
+                                        </TableCell>
                                         <TableCell className="hidden md:table-cell text-sm text-slate-500 truncate max-w-[300px]">{mod.description}</TableCell>
                                         <TableCell>
                                             <span className={`px-2 py-1 rounded text-xs font-medium bg-${mod.color}-100 text-${mod.color}-700 dark:bg-${mod.color}-900/40 dark:text-${mod.color}-400`}>
@@ -385,8 +459,42 @@ export default function OnboardingAdminView() {
                                         <Input value={editingTask.title || ''} onChange={e => setEditingTask({ ...editingTask, title: e.target.value })} placeholder="e.g. Our History" />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-xs font-bold text-slate-700">Icon (lucide-react name)</label>
-                                        <Input value={editingTask.icon || ''} onChange={e => setEditingTask({ ...editingTask, icon: e.target.value })} placeholder="e.g. BookOpen" />
+                                        <label className="text-xs font-bold text-slate-700">Icon</label>
+                                        <Select value={editingTask.icon || 'ListTodo'} onValueChange={v => setEditingTask({ ...editingTask, icon: v })}>
+                                            <SelectTrigger>
+                                                <div className="flex items-center gap-2">
+                                                    {(() => {
+                                                        const Icon = (Icons as any)[editingTask.icon || "ListTodo"] || Icons.ListTodo;
+                                                        return <Icon className="w-4 h-4" />;
+                                                    })()}
+                                                    <SelectValue placeholder="Select icon" />
+                                                </div>
+                                            </SelectTrigger>
+                                            <SelectContent className="max-h-[300px]">
+                                                {[
+                                                    { id: 'ListTodo', name: 'Task List' },
+                                                    { id: 'BookOpen', name: 'Reading' },
+                                                    { id: 'PlayCircle', name: 'Video' },
+                                                    { id: 'FileText', name: 'Document' },
+                                                    { id: 'CheckCircle2', name: 'Verification' },
+                                                    { id: 'HelpCircle', name: 'Quiz / Question' },
+                                                    { id: 'Eye', name: 'Review' },
+                                                    { id: 'User', name: 'Personal' },
+                                                    { id: 'MessageSquare', name: 'Feedback' },
+                                                    { id: 'PenTool', name: 'Drafting' }
+                                                ].map(ico => {
+                                                    const Preview = (Icons as any)[ico.id] || Icons.ListTodo;
+                                                    return (
+                                                        <SelectItem key={ico.id} value={ico.id}>
+                                                            <div className="flex items-center gap-2">
+                                                                <Preview className="w-4 h-4" />
+                                                                <span>{ico.name}</span>
+                                                            </div>
+                                                        </SelectItem>
+                                                    );
+                                                })}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="space-y-2 md:col-span-2">
                                         <label className="text-xs font-bold text-slate-700">Short Description</label>

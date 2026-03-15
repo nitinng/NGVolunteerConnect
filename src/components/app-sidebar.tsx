@@ -103,6 +103,10 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
           url: "/management/onboarding",
         },
         {
+          title: "Departments",
+          url: "/management/departments",
+        },
+        {
           title: "Analytics Dashboard",
           url: "/admin",
         }

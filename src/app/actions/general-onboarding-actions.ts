@@ -2,6 +2,12 @@
 import { createAdminClient, createServerClient } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 
+export type Department = {
+    id: string;
+    name: string;
+    description: string | null;
+};
+
 export type GeneralModule = {
     id: string;
     title: string;
@@ -9,6 +15,8 @@ export type GeneralModule = {
     icon: string;
     color: string;
     order_index: number;
+    type: 'General' | 'Specific';
+    department_id: string | null;
     created_at?: string;
     updated_at?: string;
 };
@@ -62,9 +70,34 @@ export type GeneralTask = {
     updated_at?: string;
 };
 
+export async function getDepartments(): Promise<Department[]> {
+    const supabase = await createServerClient();
+    const { data, error } = await supabase.from('departments').select('*').order('name', { ascending: true });
+    if (error && error.code === '42P01') return [];
+    if (error) throw new Error(error.message);
+    return data || [];
+}
+
+export async function upsertDepartment(payload: Partial<Department>) {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase.from('departments').upsert(payload).select().single();
+    if (error) throw new Error(error.message);
+    revalidatePath("/management/departments");
+    revalidatePath("/management/onboarding");
+    return data;
+}
+
+export async function deleteDepartment(id: string) {
+    const supabase = createAdminClient();
+    const { error } = await supabase.from('departments').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/management/departments");
+    revalidatePath("/management/onboarding");
+}
+
 export async function getGeneralOnboardingModules(): Promise<GeneralModule[]> {
     const supabase = await createServerClient();
-    const { data, error } = await supabase.from('general_onboarding_modules').select('*').order('order_index', { ascending: true });
+    const { data, error } = await supabase.from('onboarding_modules').select('*').order('order_index', { ascending: true });
     
     // For now, fail gracefully if table doesn't exist yet (before user runs the SQL)
     if (error && error.code === '42P01') return [];
@@ -75,7 +108,7 @@ export async function getGeneralOnboardingModules(): Promise<GeneralModule[]> {
 
 export async function getGeneralOnboardingTasks(): Promise<GeneralTask[]> {
     const supabase = await createServerClient();
-    const { data, error } = await supabase.from('general_onboarding_tasks').select('*').order('order_index', { ascending: true });
+    const { data, error } = await supabase.from('onboarding_tasks').select('*').order('order_index', { ascending: true });
     
     if (error && error.code === '42P01') return [];
     if (error) throw new Error(error.message);
@@ -85,7 +118,7 @@ export async function getGeneralOnboardingTasks(): Promise<GeneralTask[]> {
 
 export async function upsertModule(payload: Partial<GeneralModule>) {
     const supabase = createAdminClient();
-    const { data, error } = await supabase.from('general_onboarding_modules').upsert(payload).select().single();
+    const { data, error } = await supabase.from('onboarding_modules').upsert(payload).select().single();
     if (error) throw new Error(error.message);
     revalidatePath("/management/onboarding");
     revalidatePath("/onboarding");
@@ -94,7 +127,7 @@ export async function upsertModule(payload: Partial<GeneralModule>) {
 
 export async function deleteModule(id: string) {
     const supabase = createAdminClient();
-    const { error } = await supabase.from('general_onboarding_modules').delete().eq('id', id);
+    const { error } = await supabase.from('onboarding_modules').delete().eq('id', id);
     if (error) throw new Error(error.message);
     revalidatePath("/management/onboarding");
     revalidatePath("/onboarding");
@@ -104,7 +137,7 @@ export async function reorderModules(orderedIds: string[]) {
     const supabase = createAdminClient();
     for (let i = 0; i < orderedIds.length; i++) {
         const id = orderedIds[i];
-        const { error } = await supabase.from('general_onboarding_modules').update({ order_index: i + 1 }).eq('id', id);
+        const { error } = await supabase.from('onboarding_modules').update({ order_index: i + 1 }).eq('id', id);
         if (error) throw new Error(`Failed to reorder: ${error.message}`);
     }
     revalidatePath("/management/onboarding");
@@ -115,7 +148,7 @@ export async function reorderTasks(orderedIds: string[]) {
     const supabase = createAdminClient();
     for (let i = 0; i < orderedIds.length; i++) {
         const id = orderedIds[i];
-        const { error } = await supabase.from('general_onboarding_tasks').update({ order_index: i + 1 }).eq('id', id);
+        const { error } = await supabase.from('onboarding_tasks').update({ order_index: i + 1 }).eq('id', id);
         if (error) throw new Error(`Failed to reorder: ${error.message}`);
     }
     revalidatePath("/management/onboarding");
@@ -124,7 +157,7 @@ export async function reorderTasks(orderedIds: string[]) {
 
 export async function upsertTask(payload: Partial<GeneralTask>) {
     const supabase = createAdminClient();
-    const { data, error } = await supabase.from('general_onboarding_tasks').upsert(payload).select().single();
+    const { data, error } = await supabase.from('onboarding_tasks').upsert(payload).select().single();
     if (error) throw new Error(error.message);
     revalidatePath("/management/onboarding");
     revalidatePath("/onboarding");
@@ -133,7 +166,7 @@ export async function upsertTask(payload: Partial<GeneralTask>) {
 
 export async function deleteTask(id: string) {
     const supabase = createAdminClient();
-    const { error } = await supabase.from('general_onboarding_tasks').delete().eq('id', id);
+    const { error } = await supabase.from('onboarding_tasks').delete().eq('id', id);
     if (error) throw new Error(error.message);
     revalidatePath("/management/onboarding");
     revalidatePath("/onboarding");
@@ -141,7 +174,7 @@ export async function deleteTask(id: string) {
 
 export async function getContentBlocks(taskId: string): Promise<ContentBlock[]> {
     const supabase = await createServerClient();
-    const { data, error } = await supabase.from('general_onboarding_content_blocks')
+    const { data, error } = await supabase.from('onboarding_content_blocks')
         .select('*')
         .eq('task_id', taskId)
         .order('order_index', { ascending: true });
@@ -154,7 +187,7 @@ export async function getContentBlocks(taskId: string): Promise<ContentBlock[]> 
 
 export async function getAllContentBlocks(): Promise<ContentBlock[]> {
     const supabase = await createServerClient();
-    const { data, error } = await supabase.from('general_onboarding_content_blocks')
+    const { data, error } = await supabase.from('onboarding_content_blocks')
         .select('*')
         .order('order_index', { ascending: true });
     
@@ -166,7 +199,7 @@ export async function getAllContentBlocks(): Promise<ContentBlock[]> {
 
 export async function upsertContentBlock(payload: Partial<ContentBlock>) {
     const supabase = createAdminClient();
-    const { data, error } = await supabase.from('general_onboarding_content_blocks').upsert(payload).select().single();
+    const { data, error } = await supabase.from('onboarding_content_blocks').upsert(payload).select().single();
     if (error) throw new Error(error.message);
     revalidatePath("/management/onboarding");
     revalidatePath("/onboarding");
@@ -175,7 +208,7 @@ export async function upsertContentBlock(payload: Partial<ContentBlock>) {
 
 export async function deleteContentBlock(id: string) {
     const supabase = createAdminClient();
-    const { error } = await supabase.from('general_onboarding_content_blocks').delete().eq('id', id);
+    const { error } = await supabase.from('onboarding_content_blocks').delete().eq('id', id);
     if (error) throw new Error(error.message);
     revalidatePath("/management/onboarding");
     revalidatePath("/onboarding");
@@ -185,7 +218,7 @@ export async function reorderContentBlocks(orderedIds: string[]) {
     const supabase = createAdminClient();
     for (let i = 0; i < orderedIds.length; i++) {
         const id = orderedIds[i];
-        const { error } = await supabase.from('general_onboarding_content_blocks').update({ order_index: i + 1 }).eq('id', id);
+        const { error } = await supabase.from('onboarding_content_blocks').update({ order_index: i + 1 }).eq('id', id);
         if (error) throw new Error(`Failed to reorder: ${error.message}`);
     }
     revalidatePath("/management/onboarding");
@@ -198,7 +231,7 @@ export async function getUserResponses(taskId: string): Promise<UserResponse[]> 
     if (!user) return [];
 
     const { data, error } = await supabase
-        .from('general_onboarding_user_responses')
+        .from('onboarding_user_responses')
         .select('*')
         .eq('task_id', taskId)
         .eq('user_id', user.id);
@@ -222,7 +255,7 @@ export async function upsertUserResponse(payload: Partial<UserResponse>) {
     // We can't use generic upsert easily if there's no unique constraint without ON CONFLICT statement,
     // but the SQL table HAS a UNIQUE(user_id, block_id). So upsert will work.
     const { data, error } = await supabase
-        .from('general_onboarding_user_responses')
+        .from('onboarding_user_responses')
         .upsert(fullPayload, { onConflict: 'user_id, block_id' })
         .select()
         .single();
@@ -238,7 +271,7 @@ export async function getUserTaskProgress(): Promise<TaskProgress[]> {
     if (!user) return [];
 
     const { data, error } = await supabase
-        .from('general_onboarding_task_progress')
+        .from('onboarding_task_progress')
         .select('*')
         .eq('user_id', user.id);
     
@@ -260,7 +293,7 @@ export async function upsertUserTaskProgress(payload: Partial<TaskProgress>) {
     };
 
     const { data, error } = await supabase
-        .from('general_onboarding_task_progress')
+        .from('onboarding_task_progress')
         .upsert(fullPayload, { onConflict: 'user_id, task_id' })
         .select()
         .single();
@@ -270,12 +303,12 @@ export async function upsertUserTaskProgress(payload: Partial<TaskProgress>) {
     // RECALCULATE AGGREGATE PERCENTAGE
     // 1. Get total tasks
     const { count: totalTasks } = await adminSupabase
-        .from('general_onboarding_tasks')
+        .from('onboarding_tasks')
         .select('*', { count: 'exact', head: true });
 
     // 2. Get completed tasks for this user
     const { count: completedTasks } = await adminSupabase
-        .from('general_onboarding_task_progress')
+        .from('onboarding_task_progress')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .eq('is_completed', true);
@@ -297,3 +330,4 @@ export async function upsertUserTaskProgress(payload: Partial<TaskProgress>) {
     revalidatePath("/admin");
     return data;
 }
+

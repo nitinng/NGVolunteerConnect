@@ -4,20 +4,13 @@ import * as React from "react"
 import {
   BookOpen,
   BookOpenCheck,
-  Bot,
-  Command,
-  Frame,
+  Building,
   LifeBuoy,
-  Map,
   PieChart,
   Send,
-  Settings2,
-  SquareTerminal,
+  UserCog,
   LayoutDashboard,
   UserCircle,
-  Target,
-  Sparkles,
-  Settings
 } from "lucide-react"
 
 import { NavMain, NavItem } from "@/components/nav-main"
@@ -58,7 +51,7 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
   const activeRole = role || 'Volunteer';
   const isVolunteer = activeRole === 'Volunteer';
 
-  const navMain: NavItem[] = [
+  const navGeneral: NavItem[] = [
     {
       title: "Dashboard",
       url: "/",
@@ -68,71 +61,74 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
   ];
 
   // Top-level Onboarding (for the user's own journey)
-  navMain.push({
-    title: "Onboarding",
-    url: "/onboarding",
-    icon: BookOpenCheck,
-    items: [
-      {
-        title: "My Journey",
-        url: "/onboarding",
-      }
-    ]
-  });
-
-  // Admins & Program staff get Management section
-  if (activeRole !== 'Volunteer') {
-    navMain.push({
-      title: "Management",
-      url: "#",
-      icon: Settings2,
+  if (isVolunteer) {
+    navGeneral.push({
+      title: "Onboarding",
+      url: "/onboarding",
+      icon: BookOpenCheck,
       items: [
         {
-          title: "Users",
-          url: "#",
-          items: [
-            {
-              title: "User Registry",
-              url: "/users-registry",
-            },
-            {
-              title: "User Trends",
-              url: "/users-trends",
-            },
-          ]
-        },
-        {
-          title: "Onboarding",
-          url: "#",
-          items: [
-            {
-              title: "Skills Management",
-              url: "/skills",
-            },
-            {
-              title: "Onboarding Config",
-              url: "/management/onboarding",
-            },
-          ]
-        },
-        {
-          title: "Departments",
-          url: "/management/departments",
-        },
-        {
-          title: "Analytics Dashboard",
-          url: "/admin",
+          title: "My Journey",
+          url: "/onboarding",
         }
       ]
     });
   }
 
-  // Everyone gets Profile at the bottom of the main nav
-  navMain.push({
+  // Everyone gets Profile at the bottom of the general section
+  navGeneral.push({
     title: "My Profile",
     url: "/profile",
     icon: UserCircle,
   });
+
+  const navManagement: NavItem[] = [];
+
+  // Admins & Program staff get Management section
+  if (activeRole !== 'Volunteer') {
+    navManagement.push(
+      {
+        title: "User Management",
+        url: "#",
+        icon: UserCog,
+        items: [
+          {
+            title: "User Registry",
+            url: "/users-registry",
+          },
+          {
+            title: "User Trends",
+            url: "/users-trends",
+          },
+        ]
+      },
+      {
+        title: "Onboarding",
+        url: "#",
+        icon: BookOpen,
+        items: [
+          {
+            title: "Skills Management",
+            url: "/skills",
+          },
+          {
+            title: "Onboarding Config",
+            url: "/management/onboarding",
+          },
+        ]
+      },
+      {
+        title: "Departments",
+        url: "/management/departments",
+        icon: Building,
+      },
+      {
+        title: "Analytics Dashboard",
+        url: "/admin",
+        icon: PieChart,
+      }
+    );
+  }
 
   return (
     <Sidebar
@@ -140,7 +136,10 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
       {...props}
     >
       <SidebarContent>
-        <NavMain items={navMain} />
+        <NavMain items={navGeneral} />
+        {navManagement.length > 0 && (
+          <NavMain items={navManagement} label="Management" />
+        )}
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
     </Sidebar>

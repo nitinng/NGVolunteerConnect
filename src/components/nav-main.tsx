@@ -112,11 +112,14 @@ function NavItem({ item, level = 0 }: { item: NavItem, level?: number }) {
 
 export function NavMain({
   items,
+  label,
 }: {
   items: NavItem[]
+  label?: string
 }) {
   return (
     <SidebarGroup>
+      {label && <SidebarGroupLabel>{label}</SidebarGroupLabel>}
       <SidebarMenu>
         {items.map((item) => (
           <NavItem key={item.title} item={item} />

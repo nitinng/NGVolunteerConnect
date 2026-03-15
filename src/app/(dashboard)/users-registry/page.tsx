@@ -2,7 +2,6 @@ import { auth } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import { UsersRegistryClient } from "@/components/users/UsersRegistryClient";
-import { Users2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -61,30 +60,12 @@ export default async function UsersRegistryPage() {
     });
 
     return (
-        <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-            <div className="relative overflow-hidden rounded-lg bg-slate-50 dark:bg-zinc-900/50 p-4 md:p-6 border border-slate-200 dark:border-zinc-800 shadow-sm">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="p-2 rounded-lg bg-amber-500 text-white shadow-lg shadow-amber-500/20">
-                            <Users2 className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">User Registry</h2>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
-                                Manage your organization's members and assign roles.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <UsersRegistryClient
-                initialUsers={serializedUsers}
-                currentUserId={userId!}
-                actorRole={actorRole}
-                actorDepartments={actorDepartments}
-                isRootActor={isRootActor}
-            />
-        </div>
+        <UsersRegistryClient
+            initialUsers={serializedUsers}
+            currentUserId={userId!}
+            actorRole={activeRole}
+            actorDepartments={actorDepartments}
+            isRootActor={isRootActor}
+        />
     );
 }

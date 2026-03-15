@@ -197,7 +197,32 @@ export function UsersRegistryClient({ initialUsers, currentUserId, actorRole, ac
     };
 
     return (
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+            {/* Banner Section */}
+            <div className="relative overflow-hidden rounded-lg bg-slate-50 dark:bg-zinc-900/50 p-4 md:p-6 border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-lg bg-amber-500 text-white shadow-lg shadow-amber-500/20">
+                            <Users className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">User Registry</h2>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
+                                Manage your organization's members and assign roles.
+                            </p>
+                        </div>
+                    </div>
+                    <Button 
+                        size="sm" 
+                        className="h-10 px-4 bg-indigo-600 hover:bg-indigo-700 shadow-sm text-white"
+                        onClick={() => setIsInviteOpen(true)}
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Invite User
+                    </Button>
+                </div>
+            </div>
+
             <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
@@ -286,12 +311,6 @@ export function UsersRegistryClient({ initialUsers, currentUserId, actorRole, ac
                     </div>
 
                     <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
-                        <DialogTrigger asChild>
-                            <Button size="sm" className="h-10 px-4 bg-indigo-600 hover:bg-indigo-700 shadow-sm">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Invite User
-                            </Button>
-                        </DialogTrigger>
                         <DialogContent className="sm:max-w-[425px]">
                             <DialogHeader>
                                 <DialogTitle>Invite external user</DialogTitle>
@@ -340,18 +359,18 @@ export function UsersRegistryClient({ initialUsers, currentUserId, actorRole, ac
                     <Table>
                         <TableHeader className="bg-slate-50 dark:bg-zinc-900/50">
                             <TableRow className="hover:bg-transparent border-b">
-                                <TableHead className="w-[80px] text-center px-4 md:px-6 py-4 font-semibold text-slate-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">Image</TableHead>
-                                <TableHead className="px-4 md:px-6 py-4 font-semibold text-slate-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">Name</TableHead>
-                                <TableHead className="px-4 md:px-6 py-4 font-semibold text-slate-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">Email</TableHead>
-                                <TableHead className="px-4 md:px-6 py-4 font-semibold text-slate-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">Role & Access</TableHead>
-                                <TableHead className="hidden md:table-cell px-4 md:px-6 py-4 font-semibold text-slate-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">Joined</TableHead>
-                                <TableHead className="w-[80px] text-right px-4 md:px-6 py-4 font-semibold text-slate-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">Actions</TableHead>
+                                <TableHead className="w-[80px] text-center px-4 md:px-6 py-2 font-semibold text-slate-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">Image</TableHead>
+                                <TableHead className="px-4 md:px-6 py-2 font-semibold text-slate-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">Name</TableHead>
+                                <TableHead className="px-4 md:px-6 py-2 font-semibold text-slate-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">Email</TableHead>
+                                <TableHead className="px-4 md:px-6 py-2 font-semibold text-slate-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">Role & Access</TableHead>
+                                <TableHead className="hidden md:table-cell px-4 md:px-6 py-2 font-semibold text-slate-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">Joined</TableHead>
+                                <TableHead className="w-[80px] text-right px-4 md:px-6 py-2 font-semibold text-slate-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredUsers.slice((currentPage - 1) * usersPerPage, currentPage * usersPerPage).map((user) => (
                                 <TableRow key={user.id} className="border-b transition-colors hover:bg-slate-50/50 dark:hover:bg-zinc-900/50 group">
-                                    <TableCell className="px-4 md:px-6 py-4 text-center">
+                                    <TableCell className="px-4 md:px-6 py-2 text-center">
                                         <Avatar className="h-9 w-9 mx-auto border shadow-sm ring-2 ring-white dark:ring-zinc-950">
                                             <AvatarImage src={user.imageUrl} alt="avatar" />
                                             <AvatarFallback className="bg-indigo-50 text-indigo-700 font-semibold text-xs transition-colors group-hover:bg-indigo-100">
@@ -359,13 +378,13 @@ export function UsersRegistryClient({ initialUsers, currentUserId, actorRole, ac
                                             </AvatarFallback>
                                         </Avatar>
                                     </TableCell>
-                                    <TableCell className="px-4 md:px-6 py-4 font-semibold text-slate-900 dark:text-zinc-100 text-sm">
+                                    <TableCell className="px-4 md:px-6 py-2 font-semibold text-slate-900 dark:text-zinc-100 text-sm">
                                         {user.firstName} {user.lastName}
                                     </TableCell>
-                                    <TableCell className="px-4 md:px-6 py-4 text-sm text-slate-500 dark:text-zinc-400">
+                                    <TableCell className="px-4 md:px-6 py-2 text-sm text-slate-500 dark:text-zinc-400">
                                         {user.emailAddress}
                                     </TableCell>
-                                    <TableCell className="px-4 md:px-6 py-4">
+                                    <TableCell className="px-4 md:px-6 py-2">
                                         <div className="flex flex-col gap-1">
                                             <Badge
                                                 variant="outline"
@@ -390,10 +409,10 @@ export function UsersRegistryClient({ initialUsers, currentUserId, actorRole, ac
                                             )}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="hidden md:table-cell px-4 md:px-6 py-4 text-sm text-slate-500 dark:text-zinc-400 whitespace-nowrap">
+                                    <TableCell className="hidden md:table-cell px-4 md:px-6 py-2 text-sm text-slate-500 dark:text-zinc-400 whitespace-nowrap">
                                         {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                     </TableCell>
-                                    <TableCell className="px-4 md:px-6 py-4 text-right">
+                                    <TableCell className="px-4 md:px-6 py-2 text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" className="h-9 w-9 p-0 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
@@ -520,3 +539,4 @@ export function UsersRegistryClient({ initialUsers, currentUserId, actorRole, ac
         </div>
     );
 }
+

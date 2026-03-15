@@ -136,18 +136,18 @@ export default function DepartmentsManagementView() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead className="hidden md:table-cell">Description</TableHead>
-                                <TableHead className="w-[100px] text-right">Actions</TableHead>
+                                <TableHead className="px-4 md:px-6 py-4">Name</TableHead>
+                                <TableHead className="hidden md:table-cell px-4 md:px-6 py-4">Description</TableHead>
+                                <TableHead className="w-[100px] text-right px-4 md:px-6 py-4">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredDepartments.length > 0 ? (
                                 filteredDepartments.map((dept) => (
                                     <TableRow key={dept.id}>
-                                        <TableCell className="font-bold text-slate-900 dark:text-slate-100">{dept.name}</TableCell>
-                                        <TableCell className="hidden md:table-cell text-sm text-slate-500">{dept.description || "No description provided."}</TableCell>
-                                        <TableCell className="text-right flex items-center justify-end gap-1">
+                                        <TableCell className="font-bold text-slate-900 dark:text-slate-100 px-4 md:px-6 py-4">{dept.name}</TableCell>
+                                        <TableCell className="hidden md:table-cell text-sm text-slate-500 px-4 md:px-6 py-4">{dept.description || "No description provided."}</TableCell>
+                                        <TableCell className="text-right flex items-center justify-end gap-1 px-4 md:px-6 py-4">
                                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingDept(dept)}><Edit2 className="w-4 h-4" /></Button>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => handleDelete(dept.id)}><Trash2 className="w-4 h-4" /></Button>
                                         </TableCell>

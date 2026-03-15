@@ -218,12 +218,21 @@ export default function SkillsManagementView() {
     }
 
     return (
-        <div className="flex flex-col h-[calc(100vh-var(--header-height)-1rem)] p-4 md:p-6 max-w-[1400px] mx-auto w-full overflow-hidden">
-            {/* Header */}
-            <div className="flex justify-between items-start mb-6 shrink-0">
-                <div>
-                    <h1 className="text-xl font-bold tracking-tight">Onboarding & Skills CMS</h1>
-                    <p className="text-sm text-muted-foreground">Architect the journey for our student community.</p>
+        <div className="flex flex-col h-[calc(100vh-var(--header-height)-1rem)] p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-hidden">
+            {/* Banner */}
+            <div className="relative overflow-hidden rounded-lg bg-slate-50 dark:bg-zinc-900/50 p-4 md:p-6 border border-slate-200 dark:border-zinc-800 shadow-sm mb-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-lg bg-violet-500 text-white shadow-lg shadow-violet-500/20">
+                            <LayoutGrid className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Onboarding & Skills CMS</h2>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
+                                Architect the journey for our student community by managing categories and expertise areas.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
 

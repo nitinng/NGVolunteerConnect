@@ -249,16 +249,18 @@ export default function OnboardingAdminView() {
 
     return (
         <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-            <div className="relative overflow-hidden rounded-[12px] bg-slate-50 dark:bg-zinc-900/50 p-6 md:p-8 border border-slate-200 dark:border-zinc-800 shadow-sm">
-                <div className="flex items-center gap-6">
-                    <div className="p-3 rounded-[12px] bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
-                        <Target className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Onboarding Configuration</h2>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-xl font-medium">
-                            Manage the general onboarding flow (Modules), sub-tasks, and their associated reading/video content.
-                        </p>
+            <div className="relative overflow-hidden rounded-lg bg-slate-50 dark:bg-zinc-900/50 p-4 md:p-6 border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-lg bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+                            <Target className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Onboarding Configuration</h2>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
+                                Manage the general onboarding flow (Modules), sub-tasks, and their associated reading/video content.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -6,6 +6,8 @@ import { UsersClient } from "./client-page";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+import { Users2 } from "lucide-react";
+
 export default async function UsersPage() {
     const supabase = createAdminClient();
     const { data: { users } } = await supabase.auth.admin.listUsers();
@@ -62,12 +64,21 @@ export default async function UsersPage() {
     });
 
     return (
-        <div className="flex flex-1 flex-col gap-6 p-4 md:p-8 pt-0">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Users Management</h1>
-                <p className="text-muted-foreground mt-2">
-                    Manage your organization's members, assign roles, and visualize metrics.
-                </p>
+        <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+            <div className="relative overflow-hidden rounded-lg bg-slate-50 dark:bg-zinc-900/50 p-4 md:p-6 border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-lg bg-amber-500 text-white shadow-lg shadow-amber-500/20">
+                            <Users2 className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Users Management</h2>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
+                                Manage your organization's members, assign roles, and visualize metrics.
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <UsersClient

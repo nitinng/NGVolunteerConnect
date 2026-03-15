@@ -34,6 +34,7 @@ export default async function UsersPage() {
         (sessionClaims?.metadata?.role as string) ||
         (sessionClaims as any)?.role ||
         "Volunteer";
+    const actorDepartments: string[] = (freshUser?.app_metadata?.departments as string[]) || [];
     const isRootActor = actorEmail === 'nitin@navgurukul.org' || userId === process.env.MASTER_USER_ID;
 
     // Only Admins or explicitly enabled Program/Ops can see the users management module
@@ -56,6 +57,7 @@ export default async function UsersPage() {
             createdAt: new Date(user.created_at).getTime(),
             lastSignInAt: new Date(user.last_sign_in_at || user.created_at).getTime(),
             role: isMaster ? "Admin" : ((user.app_metadata?.role as string) || "Volunteer"),
+            departments: (user.app_metadata?.departments as string[]) || [],
             volunteerEnabled: user.app_metadata?.volunteerEnabled === true,
             userManagementEnabled: user.app_metadata?.userManagementEnabled === true,
             imageUrl: user.user_metadata?.avatar_url || "",
@@ -85,6 +87,7 @@ export default async function UsersPage() {
                 initialUsers={serializedUsers}
                 currentUserId={userId!}
                 actorRole={actorRole}
+                actorDepartments={actorDepartments}
                 isRootActor={isRootActor}
             />
         </div>

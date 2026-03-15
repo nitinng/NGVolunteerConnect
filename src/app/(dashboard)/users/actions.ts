@@ -34,9 +34,11 @@ async function getActor(supabase: Client) {
         (sessionClaims?.metadata?.role as string) ||
         (sessionClaims as any)?.role ||
         "Volunteer";
+    
+    const departments: string[] = (sessionClaims?.metadata?.departments as string[]) || [];
 
     const isRoot = email === ROOT_ADMIN_EMAIL || userId === process.env.MASTER_USER_ID;
-    return { userId, email, role, isRoot };
+    return { userId, email, role, isRoot, departments };
 }
 
 // ─── actions ────────────────────────────────────────────────────────────────
@@ -76,7 +78,7 @@ export async function deleteUserAction(userId: string) {
     }
 }
 
-export async function updateUserRoleAction(userId: string, role: string) {
+export async function updateUserRoleAction(userId: string, role: string, departments?: string[]) {
     const supabase = createAdminClient();
     const actor = await getActor(supabase);
 
@@ -87,6 +89,16 @@ export async function updateUserRoleAction(userId: string, role: string) {
 
     const { data: { user: targetUser } } = await supabase.auth.admin.getUserById(userId);
     const targetRole: string = (targetUser?.app_metadata?.role as string) || "Volunteer";
+    const targetEmail: string = targetUser?.email || "";
+
+    // Validation: Program/Operations MUST have at least one department
+    if (["Program", "Operations"].includes(role)) {
+        if (!departments || departments.length === 0) {
+            return { success: false, error: "Program and Operations roles must have at least one department assigned." };
+        }
+    }
+
+    const isActorOrgManager = actor.role === "Program" && actor.departments.includes("ORG");
 
     if (actor.isRoot) {
         // Root admin: unrestricted
@@ -96,8 +108,18 @@ export async function updateUserRoleAction(userId: string, role: string) {
         if (role === "Admin" || targetRole === "Admin") {
             return { success: false, error: "Only the root admin can add or remove admins." };
         }
+    } else if (isActorOrgManager) {
+        // Program manager in ORG department: can change any role for ALL EXCEPT Nitro
+        if (targetEmail === ROOT_ADMIN_EMAIL) {
+            return { success: false, error: "You cannot change the role of the root admin." };
+        }
+        // "all roles except the department - ORG" 
+        // Interpretation: They can assign ANY role, but they cannot assign anyone to the "ORG" department.
+        if (departments?.includes("ORG")) {
+             return { success: false, error: "You do not have permission to assign the ORG department." };
+        }
     } else if (actor.role === "Program") {
-        // Program: can only change Volunteers → Program or Operations (not Admin, not touching existing Admins/Program actors)
+        // Regular Program: can only change Volunteers → Program or Operations (not Admin, not touching existing Admins/Program actors)
         if (targetRole !== "Volunteer") {
             return { success: false, error: "Program managers can only change the role of Volunteers." };
         }
@@ -111,7 +133,7 @@ export async function updateUserRoleAction(userId: string, role: string) {
 
     try {
         await supabase.auth.admin.updateUserById(userId, {
-            app_metadata: { ...targetUser?.app_metadata, role },
+            app_metadata: { ...targetUser?.app_metadata, role, departments: departments || [] },
         });
         revalidatePath("/", "layout");
         return { success: true };
@@ -124,6 +146,8 @@ export async function inviteUserAction(emailAddress: string, role: string) {
     const supabase = createAdminClient();
     const actor = await getActor(supabase);
 
+    const isActorOrgManager = actor.role === "Program" && actor.departments.includes("ORG");
+
     // Only root admin can send an Admin invite
     if (role === "Admin" && !actor.isRoot) {
         return { success: false, error: "Only the root admin can invite admins." };
@@ -134,8 +158,8 @@ export async function inviteUserAction(emailAddress: string, role: string) {
         return { success: false, error: "You do not have permission to invite users." };
     }
 
-    // Program can only invite Volunteers
-    if (actor.role === "Program" && !["Volunteer"].includes(role)) {
+    // Program can only invite Volunteers (unless they are ORG managers)
+    if (actor.role === "Program" && !isActorOrgManager && !["Volunteer"].includes(role)) {
         return { success: false, error: "Program managers can only invite Volunteers." };
     }
 

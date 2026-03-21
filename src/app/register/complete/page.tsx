@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { completeRegistration } from "@/app/actions/user-actions";
 import LoadingView from "@/components/loading-view";
+import { MiniLoader } from "@/components/mini-loader";
 
 export default function CompleteRegistration() {
     const router = useRouter();
@@ -53,7 +54,9 @@ export default function CompleteRegistration() {
 
     return (
         <div className="relative min-h-[100dvh]">
-            <LoadingView />
+            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
+                <MiniLoader />
+            </div>
             <div className="absolute inset-0 z-[10000] flex flex-col items-center justify-center p-6 bg-transparent pointer-events-none">
                 <div className="w-full max-w-sm flex flex-col items-center text-center space-y-4">
                     <div className="mt-[200px]">

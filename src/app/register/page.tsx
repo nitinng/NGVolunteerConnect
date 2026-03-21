@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSignUp, useUser } from "@/hooks/use-auth";
 import { ArrowLeft, Check, CheckCircle2, ArrowRight } from "lucide-react";
 import LoadingView, { LoadingSpinner } from "@/components/loading-view";
+import { MiniLoader } from "@/components/mini-loader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -288,7 +289,7 @@ function RegistrationForm() {
 
                 {/* Right Action (Branding Slider) */}
                 <div className="w-14 h-14 flex items-center justify-center">
-                    <LoadingSpinner size="md" />
+                    <MiniLoader />
                 </div>
             </div>
 
@@ -640,7 +641,9 @@ function RegistrationForm() {
                             >
                                 {loading ? (
                                     <div className="flex items-center gap-3">
-                                        <LoadingSpinner size="sm" />
+                                        <div className="scale-50 -my-4">
+                                            <MiniLoader />
+                                        </div>
                                         <span className="text-sm">Processing...</span>
                                     </div>
                                 ) : !formData.inclusionAgreed ? (
@@ -700,7 +703,7 @@ function RegistrationForm() {
 
 export default function RegistrationPage() {
     return (
-        <Suspense fallback={<LoadingView />}>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><MiniLoader /></div>}>
             <RegistrationForm />
         </Suspense>
     );

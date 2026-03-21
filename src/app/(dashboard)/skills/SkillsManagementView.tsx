@@ -61,6 +61,7 @@ import {
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import LoadingView, { LoadingSpinner } from "@/components/loading-view";
 
 type SubcategoryWithCategory = SkillSubcategory & { skill_categories: { title: string } };
 
@@ -210,11 +211,7 @@ export default function SkillsManagementView() {
     }, [subcategories, searchTerm]);
 
     if (isLoading) {
-        return (
-            <div className="flex h-[calc(100vh-var(--header-height))] items-center justify-center">
-                <i className="fa-solid fa-spinner fa-spin text-3xl text-slate-400" />
-            </div>
-        );
+        return <LoadingView fullScreen={false} />;
     }
 
     return (
@@ -386,7 +383,11 @@ export default function SkillsManagementView() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsCategoryModalOpen(false)}>Cancel</Button>
                         <Button onClick={handleSaveCategory} disabled={isActionLoading} className="bg-slate-950 hover:bg-slate-900 text-white min-w-[100px]">
-                            {isActionLoading ? <i className="fa-solid fa-spinner fa-spin" /> : "Save Category"}
+                            {isActionLoading ? (
+                                <div className="h-4 w-4 flex items-center justify-center">
+                                    <LoadingSpinner size="sm" />
+                                </div>
+                            ) : "Save Category"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -419,7 +420,11 @@ export default function SkillsManagementView() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsSubCatModalOpen(false)}>Cancel</Button>
                         <Button onClick={handleSaveSubCat} disabled={isActionLoading} className="bg-slate-950 hover:bg-slate-900 text-white min-w-[100px]">
-                            {isActionLoading ? <i className="fa-solid fa-spinner fa-spin" /> : "Save Sub-Category"}
+                            {isActionLoading ? (
+                                <div className="h-4 w-4 flex items-center justify-center">
+                                    <LoadingSpinner size="sm" />
+                                </div>
+                            ) : "Save Sub-Category"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

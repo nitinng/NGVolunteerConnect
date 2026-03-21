@@ -18,6 +18,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 
@@ -30,8 +31,9 @@ export type NavItem = {
 }
 
 function NavItem({ item, level = 0 }: { item: NavItem, level?: number }) {
+  const { setOpenMobile, isMobile } = useSidebar()
   const hasSubItems = !!item.items?.length
-  const [isOpen, setIsOpen] = React.useState(item.isActive)
+  const [isOpen, setIsOpen] = React.useState(!!item.isActive)
 
   if (!hasSubItems) {
     const Component = level === 0 ? SidebarMenuButton : SidebarMenuSubButton
@@ -44,7 +46,12 @@ function NavItem({ item, level = 0 }: { item: NavItem, level?: number }) {
           tooltip={item.title}
           isActive={item.isActive}
         >
-          <Link href={item.url}>
+          <Link 
+            href={item.url}
+            onClick={() => {
+              if (isMobile) setOpenMobile(false)
+            }}
+          >
             {item.icon && <item.icon />}
             <span>{item.title}</span>
           </Link>

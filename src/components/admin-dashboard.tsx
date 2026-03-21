@@ -5,6 +5,7 @@ import { TrendingUp, Users, UserCheck, BarChart3, CheckSquare, Percent, ShieldCh
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts"
 import { getSkillDistribution, getSubcategoryDistribution, getDashboardMetrics } from "@/app/actions/admin-stats-actions"
 import { useUserContext } from "@/contexts/user-context"
+import { LoadingSpinner } from "@/components/loading-view"
 
 import {
   Card,
@@ -357,7 +358,7 @@ export function AdminDashboard() {
           <CardContent className="flex-1">
             {isStatsLoading ? (
                <div className="flex h-full items-center justify-center py-20">
-                 <i className="fa-solid fa-spinner fa-spin text-2xl text-muted-foreground" />
+                 <LoadingSpinner size="md" />
                </div>
             ) : (
               <ChartContainer config={distConfig}>
@@ -420,7 +421,7 @@ export function AdminDashboard() {
           <CardContent className="flex-1">
             {isStatsLoading ? (
                <div className="flex h-full items-center justify-center py-20">
-                 <i className="fa-solid fa-spinner fa-spin text-2xl text-muted-foreground" />
+                 <LoadingSpinner size="md" />
                </div>
             ) : (
               <ChartContainer config={distConfig}>
@@ -483,7 +484,7 @@ export function AdminDashboard() {
           <CardContent className="flex-1 overflow-auto max-h-[400px]">
              {isStatsLoading ? (
                <div className="flex h-full items-center justify-center py-20">
-                 <i className="fa-solid fa-spinner fa-spin text-2xl text-muted-foreground" />
+                 <LoadingSpinner size="md" />
                </div>
             ) : (
               <ChartContainer config={distConfig}>

@@ -60,13 +60,18 @@ export function SiteHeader({
         <Separator orientation="vertical" className="mr-2 h-4" />
         <Breadcrumb className="hidden sm:block">
           <BreadcrumbList>
-            <BreadcrumbItem className="flex items-center gap-2">
-              <Fingerprint className="h-4 w-4 text-indigo-600" />
-              <BreadcrumbLink href="/" className="font-semibold select-none">NG Volunteer Connect</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
+            {pathname !== "/" && (
+              <>
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="/" className="text-muted-foreground hover:text-foreground">
+                    Dashboard
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+              </>
+            )}
             <BreadcrumbItem>
-              <BreadcrumbPage>{activePage}</BreadcrumbPage>
+              <BreadcrumbPage className="font-semibold text-foreground">{activePage}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>

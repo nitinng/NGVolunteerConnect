@@ -45,6 +45,7 @@ import { Label } from "@/components/ui/label";
 import { getDepartments, Department } from "@/app/actions/general-onboarding-actions";
 import { deleteUserAction, updateUserRoleAction, inviteUserAction, toggleVolunteeringProfileAction, toggleUserManagementAction } from "@/app/(dashboard)/users/actions";
 import { ReadUser } from "./types";
+import { LoadingSpinner } from "@/components/loading-view";
 
 export function UsersRegistryClient({ initialUsers, currentUserId, actorRole, actorDepartments, isRootActor }: {
     initialUsers: ReadUser[];
@@ -298,7 +299,11 @@ export function UsersRegistryClient({ initialUsers, currentUserId, actorRole, ac
                                 disabled={loadingAction?.startsWith('role-') || (["Program", "Operations"].includes(editRole) && selectedDepts.length === 0)}
                                 className="flex-1 bg-indigo-600 hover:bg-indigo-700"
                             >
-                                {loadingAction?.startsWith('role-') ? <i className="fa-solid fa-spinner fa-spin mr-2" /> : null}
+                                {loadingAction?.startsWith('role-') ? (
+                                    <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                                        <LoadingSpinner size="sm" />
+                                    </div>
+                                ) : null}
                                 Save Changes
                             </Button>
                         </div>
@@ -392,7 +397,11 @@ export function UsersRegistryClient({ initialUsers, currentUserId, actorRole, ac
                                 <div className="w-full flex justify-between gap-3">
                                     <Button variant="ghost" onClick={() => setIsInviteOpen(false)} className="flex-1">Cancel</Button>
                                     <Button onClick={handleInvite} disabled={loadingAction === "invite" || !inviteEmail} className="flex-1 bg-indigo-600 hover:bg-indigo-700">
-                                        {loadingAction === "invite" ? <i className="fa-solid fa-spinner fa-spin mr-2" /> : null}
+                                        {loadingAction === "invite" ? (
+                                            <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                                                <LoadingSpinner size="sm" />
+                                            </div>
+                                        ) : null}
                                         Send Invite
                                     </Button>
                                 </div>
@@ -464,7 +473,9 @@ export function UsersRegistryClient({ initialUsers, currentUserId, actorRole, ac
                                                 <Button variant="ghost" className="h-9 w-9 p-0 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
                                                     <span className="sr-only">Open menu</span>
                                                     {loadingAction === `role-${user.id}` || loadingAction === user.id ? (
-                                                        <i className="fa-solid fa-spinner fa-spin" />
+                                                        <div className="h-4 w-4 flex items-center justify-center">
+                                                            <LoadingSpinner size="sm" />
+                                                        </div>
                                                     ) : (
                                                         <MoreHorizontal className="h-4 w-4 text-slate-400" />
                                                     )}

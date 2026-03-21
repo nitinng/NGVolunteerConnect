@@ -5,13 +5,12 @@ import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSignUp, useUser } from "@/hooks/use-auth";
 import { ArrowLeft, Check, CheckCircle2, ArrowRight } from "lucide-react";
-import LoadingView from "@/components/loading-view";
+import LoadingView, { LoadingSpinner } from "@/components/loading-view";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthFooter } from "@/components/auth-footer";
-import { MiniLoader } from "@/components/mini-loader";
 import {
     Select,
     SelectContent,
@@ -288,8 +287,8 @@ function RegistrationForm() {
                 </div>
 
                 {/* Right Action (Branding Slider) */}
-                <div className="w-14 h-14">
-                    <MiniLoader />
+                <div className="w-14 h-14 flex items-center justify-center">
+                    <LoadingSpinner size="md" />
                 </div>
             </div>
 
@@ -641,7 +640,7 @@ function RegistrationForm() {
                             >
                                 {loading ? (
                                     <div className="flex items-center gap-3">
-                                        <i className="fa-solid fa-spinner fa-spin"></i>
+                                        <LoadingSpinner size="sm" />
                                         <span className="text-sm">Processing...</span>
                                     </div>
                                 ) : !formData.inclusionAgreed ? (

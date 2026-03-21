@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { useTheme } from "next-themes";
 import { useUserContext } from "@/contexts/user-context";
+import LoadingView, { LoadingSpinner } from "@/components/loading-view";
 
 const INDUSTRY_VERTICALS = [
     "Software Engineering",
@@ -59,7 +60,7 @@ export default function ProfileView() {
     const [isLoadingProfile, setIsLoadingProfile] = useState(true);
     const [profile, setProfile] = useState<Profile | null>(null);
 
-    // Local form state — mirrors Supabase profile fields
+    // Local form state 
     const [formData, setFormData] = useState({
         // Personal
         fullName: "",
@@ -125,18 +126,12 @@ export default function ProfileView() {
 
     // Load profile from Supabase on mount
     useEffect(() => {
-        console.log("[ProfileView] useEffect triggered. User:", user?.id);
-
-        // User is not logged in — stop loading immediately
         if (!user) {
-            console.log("[ProfileView] No user found in context. Stopping load.");
             setIsLoadingProfile(false);
             return;
         }
 
-        console.log("[ProfileView] Fetching profile for:", user.id);
         getMyProfile().then((p) => {
-            console.log("[ProfileView] Profile fetch result:", p ? "Found" : "Not Found");
             if (p) {
                 setProfile(p);
                 setFormData({
@@ -171,7 +166,6 @@ export default function ProfileView() {
                     acknowledgement: p.acknowledgement ?? false,
                 });
 
-                // Load sub-skills from profiles table
                 setSelectedPrimarySubSkills(p.primary_skill_subcategories || []);
                 setSelectedSecondarySubSkills(p.secondary_skill_subcategories || []);
             }
@@ -179,17 +173,12 @@ export default function ProfileView() {
             console.error("[ProfileView] Failed to load profile:", err);
             toast.error("Failed to load profile data.");
         }).finally(() => {
-            console.log("[ProfileView] Load complete.");
             setIsLoadingProfile(false);
         });
     }, [user]);
 
     if (isLoadingProfile) {
-        return (
-            <div className="flex h-[50vh] items-center justify-center">
-                <i className="fa-solid fa-spinner fa-spin text-3xl text-primary" />
-            </div>
-        );
+        return <LoadingView fullScreen={false} />;
     }
 
     if (!user) return null;
@@ -297,13 +286,13 @@ export default function ProfileView() {
                         )}
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+                <div className="flex items-center gap-2 self-start md:self-center">
+                    <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
                         <Moon className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" onClick={() => signOut({ redirectUrl: "/login" })}>
+                    <Button variant="outline" size="sm" onClick={() => signOut({ redirectUrl: "/login" })} className="h-9">
                         <LogOut className="h-4 w-4 mr-2" />
-                        Sign Out
+                        <span className="text-xs sm:text-sm">Sign Out</span>
                     </Button>
                 </div>
             </div>
@@ -325,14 +314,29 @@ export default function ProfileView() {
 
             {/* ── Tabs ── */}
             <Tabs defaultValue="personal" className="w-full">
-                <TabsList className={`grid w-full mb-4 ${showVolunteerTabs ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-1 md:w-[200px]'}`}>
-                    <TabsTrigger value="personal"><User className="w-4 h-4 mr-2" />Personal</TabsTrigger>
+                <TabsList className={`flex items-center justify-start overflow-x-auto overflow-y-hidden no-scrollbar w-full h-auto md:h-10 mb-6 bg-muted/50 p-1 gap-1 md:gap-0 md:grid ${showVolunteerTabs ? 'md:grid-cols-5' : 'md:w-[200px] md:grid-cols-1'}`}>
+                    <TabsTrigger value="personal" className="flex-none md:flex-1 py-2 md:py-1 px-4 md:px-2 min-w-fit md:min-w-0">
+                        <User className="w-4 h-4 mr-2" />
+                        <span className="text-sm">Personal</span>
+                    </TabsTrigger>
                     {showVolunteerTabs && (
                         <>
-                            <TabsTrigger value="education"><GraduationCap className="w-4 h-4 mr-2" />Education</TabsTrigger>
-                            <TabsTrigger value="professional"><Briefcase className="w-4 h-4 mr-2" />Professional</TabsTrigger>
-                            <TabsTrigger value="skills"><Heart className="w-4 h-4 mr-2" />Skills</TabsTrigger>
-                            <TabsTrigger value="availability"><Calendar className="w-4 h-4 mr-2" />Commitment</TabsTrigger>
+                            <TabsTrigger value="education" className="flex-none md:flex-1 py-2 md:py-1 px-4 md:px-2 min-w-fit md:min-w-0">
+                                <GraduationCap className="w-4 h-4 mr-2" />
+                                <span className="text-sm">Education</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="professional" className="flex-none md:flex-1 py-2 md:py-1 px-4 md:px-2 min-w-fit md:min-w-0">
+                                <Briefcase className="w-4 h-4 mr-2" />
+                                <span className="text-sm">Professional</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="skills" className="flex-none md:flex-1 py-2 md:py-1 px-4 md:px-2 min-w-fit md:min-w-0">
+                                <Heart className="w-4 h-4 mr-2" />
+                                <span className="text-sm">Skills</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="availability" className="flex-none md:flex-1 py-2 md:py-1 px-4 md:px-2 min-w-fit md:min-w-0">
+                                <Calendar className="w-4 h-4 mr-2" />
+                                <span className="text-sm">Commitment</span>
+                            </TabsTrigger>
                         </>
                     )}
                 </TabsList>
@@ -737,11 +741,11 @@ export default function ProfileView() {
                                 <div className="grid md:grid-cols-2 gap-8 border-t pt-6">
                                     <div className="space-y-4">
                                         <Label className="text-base font-semibold">Commitment Type <span className="text-rose-500">*</span></Label>
-                                        <RadioGroup value={formData.commitment_type} onValueChange={(v) => setFormData({ ...formData, commitment_type: v })} className="space-y-3">
+                                        <RadioGroup value={formData.commitment_type} onValueChange={(v) => setFormData({ ...formData, commitment_type: v })} className="space-y-2 md:space-y-3">
                                             {["One-time session", "Short-term (1–3 months)", "Long term (3+ months)"].map((opt) => (
-                                                <div key={opt} className="flex items-center space-x-3 p-3 rounded-md border bg-card hover:bg-accent/50 transition-colors">
+                                                <div key={opt} className="flex items-center space-x-3 p-2.5 md:p-3 rounded-md border bg-card hover:bg-accent/50 transition-colors">
                                                     <RadioGroupItem value={opt} id={`commit-${opt}`} />
-                                                    <Label htmlFor={`commit-${opt}`} className="flex-1 cursor-pointer font-medium">{opt}</Label>
+                                                    <Label htmlFor={`commit-${opt}`} className="flex-1 cursor-pointer font-medium text-sm md:text-base">{opt}</Label>
                                                 </div>
                                             ))}
                                         </RadioGroup>
@@ -749,11 +753,11 @@ export default function ProfileView() {
 
                                     <div className="space-y-4">
                                         <Label className="text-base font-semibold">Hours per Week <span className="text-rose-500">*</span></Label>
-                                        <RadioGroup value={formData.hours_per_week} onValueChange={(v) => setFormData({ ...formData, hours_per_week: v })} className="grid grid-cols-2 gap-3">
+                                        <RadioGroup value={formData.hours_per_week} onValueChange={(v) => setFormData({ ...formData, hours_per_week: v })} className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
                                             {["1-2 hours", "2–4 hours", "5–8 hours", "8+ hours", "Flexible"].map((opt) => (
-                                                <div key={opt} className="flex items-center space-x-3 p-3 rounded-md border bg-card hover:bg-accent/50 transition-colors">
+                                                <div key={opt} className="flex items-center space-x-3 p-2.5 md:p-3 rounded-md border bg-card hover:bg-accent/50 transition-colors">
                                                     <RadioGroupItem value={opt} id={`hours-${opt}`} />
-                                                    <Label htmlFor={`hours-${opt}`} className="flex-1 cursor-pointer font-medium">{opt}</Label>
+                                                    <Label htmlFor={`hours-${opt}`} className="flex-1 cursor-pointer font-medium text-sm md:text-base">{opt}</Label>
                                                 </div>
                                             ))}
                                         </RadioGroup>
@@ -806,7 +810,11 @@ export default function ProfileView() {
 
             <div className="flex justify-end pt-4">
                 <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
-                    {isSaving ? <i className="fa-solid fa-spinner fa-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+                    {isSaving ? (
+                        <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                            <LoadingSpinner size="sm" />
+                        </div>
+                    ) : <Check className="w-4 h-4 mr-2" />}
                     Save
                 </Button>
             </div>

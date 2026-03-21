@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useSignIn } from "@/hooks/use-auth";
 import { createBrowserClient } from "@/lib/supabase";
 import Input from "./Input";
-import { MiniLoader } from "./mini-loader";
+import { LoadingSpinner } from "./loading-view";
 
 
 type AuthMode = 'login' | 'forgot' | 'reset';
@@ -78,7 +78,9 @@ export function LoginForm() {
         <Toaster />
         <div className="p-7 md:p-8">
           <header className="text-center mb-7">
-            <MiniLoader />
+            <div className="flex justify-center mb-5">
+              <LoadingSpinner size="md" />
+            </div>
             <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
               {mode === 'login' && 'Welcome Back'}
               {mode === 'forgot' && 'Reset Password'}
@@ -107,7 +109,7 @@ export function LoginForm() {
                 className="w-full flex items-center justify-center gap-2.5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 py-3 rounded-lg font-bold text-slate-700 dark:text-slate-200 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all active:scale-[0.98] disabled:opacity-50 shadow-md hover:shadow-lg shadow-slate-200/50 dark:shadow-none"
               >
                 {isSocialLoading ? (
-                  <i className="fa-solid fa-spinner fa-spin"></i>
+                  <LoadingSpinner size="sm" />
                 ) : (
                   <div className="flex items-center gap-2.5">
                     <svg viewBox="0 0 24 24" width="18" height="18">
@@ -164,7 +166,9 @@ export function LoginForm() {
                 className="w-full bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white dark:text-slate-200 py-3.5 rounded-lg font-bold transition-all active:scale-[0.98] disabled:opacity-50 mt-3.5 flex items-center justify-center shadow-xl shadow-slate-900/20 dark:shadow-indigo-500/10"
               >
                 {isLoading ? (
-                  <i className="fa-solid fa-spinner fa-spin mr-2"></i>
+                  <div className="mr-2 h-4 w-4">
+                    <LoadingSpinner size="sm" />
+                  </div>
                 ) : (
                   <i className={`fa-solid ${mode === 'forgot' ? 'fa-paper-plane' : 'fa-check'} mr-2`}></i>
                 )}

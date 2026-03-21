@@ -8,9 +8,9 @@ import {
   LifeBuoy,
   PieChart,
   Send,
+  UserCircle,
   UserCog,
   LayoutDashboard,
-  UserCircle,
 } from "lucide-react"
 
 import { NavMain, NavItem } from "@/components/nav-main"
@@ -22,8 +22,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { UserRole } from "@/lib/roles"
+import { Fingerprint } from "lucide-react"
 import Link from "next/link"
 
 const data = {
@@ -47,6 +49,7 @@ const data = {
 }
 
 export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps<typeof Sidebar> & { role?: UserRole, devOverride?: string }) {
+  const { setOpenMobile, isMobile } = useSidebar()
   // Determine if it's a volunteer view
   const activeRole = role || 'Volunteer';
   const isVolunteer = activeRole === 'Volunteer';
@@ -135,6 +138,33 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
       className="top-(--header-height) h-[calc(100svh-var(--header-height))]!"
       {...props}
     >
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <Link 
+                href="/"
+                onClick={() => {
+                  if (isMobile) setOpenMobile(false)
+                }}
+              >
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-indigo-600 text-sidebar-primary-foreground">
+                  <Fingerprint className="size-6" />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">NG Connect</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {activeRole === 'Volunteer' && "Volunteer Hub"}
+                    {activeRole === 'Operations' && "Operations Hub"}
+                    {activeRole === 'Program' && "Program Hub"}
+                    {activeRole === 'Admin' && "Admin Hub"}
+                  </span>
+                </div>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
       <SidebarContent>
         <NavMain items={navGeneral} />
         {navManagement.length > 0 && (

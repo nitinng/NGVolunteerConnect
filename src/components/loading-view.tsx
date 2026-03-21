@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 
-const LoadingView = () => {
+export const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
   const [slideIndex, setSlideIndex] = useState(0);
   const [hasStarted, setHasStarted] = useState(false);
 
@@ -14,68 +14,79 @@ const LoadingView = () => {
     return () => clearInterval(timer);
   }, []);
 
+  const sizeClasses = {
+    sm: "w-8 h-8 rounded-lg",
+    md: "w-16 h-16 rounded-2xl",
+    lg: "w-24 h-24 rounded-3xl",
+  };
+
+  const iconSizeClasses = {
+    sm: "text-lg",
+    md: "text-2xl",
+    lg: "text-4xl",
+  };
+
   const renderContent = () => {
     switch (slideIndex) {
-
       case 0:
         return (
           <div className={`w-full h-full flex items-center justify-center bg-rose-500 text-white ${hasStarted ? 'animate-in slide-in-from-right duration-500' : ''}`}>
-            <i className="fa-solid fa-heart text-2xl"></i>
+            <i className={`fa-solid fa-heart ${iconSizeClasses[size]}`}></i>
           </div>
         );
-
       case 1:
         return (
           <div className="w-full h-full flex items-center justify-center bg-indigo-600 text-white animate-in duration-500">
-            <span className="font-black text-2xl">NG</span>
+            <span className={`font-black ${iconSizeClasses[size]}`}>NG</span>
           </div>
         );
-
       case 2:
         return (
           <div className="w-full h-full flex items-center justify-center bg-sky-500 text-white animate-in slide-in-from-right duration-500">
-            <i className="fa-solid fa-user-group text-2xl"></i>
+            <i className={`fa-solid fa-user-group ${iconSizeClasses[size]}`}></i>
           </div>
         );
-
       case 3:
         return (
           <div className="w-full h-full flex items-center justify-center bg-emerald-500 text-white animate-in slide-in-from-right duration-500">
-            <i className="fa-solid fa-chalkboard-user text-2xl"></i>
+            <i className={`fa-solid fa-chalkboard-user ${iconSizeClasses[size]}`}></i>
           </div>
         );
-
       case 4:
         return (
           <div className="w-full h-full flex items-center justify-center bg-amber-500 text-white animate-in slide-in-from-right duration-500">
-            <i className="fa-solid fa-seedling text-2xl"></i>
+            <i className={`fa-solid fa-seedling ${iconSizeClasses[size]}`}></i>
           </div>
         );
-
       default:
         return null;
-
     }
   };
+
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 animate-in fade-in duration-500">
+    <div className="relative">
+      {/* Spinning Rings */}
+      <div className={`absolute ${size === "sm" ? "-inset-1" : "-inset-4"} rounded-full border-2 ${size === "sm" ? "border-slate-200 dark:border-slate-800" : "border-4 border-slate-200 dark:border-slate-800"}`}></div>
+      <div className={`absolute ${size === "sm" ? "-inset-1" : "-inset-4"} rounded-full border-2 ${size === "sm" ? "border-t-transparent" : "border-4 border-t-transparent"} animate-spin transition-colors duration-500 ${slideIndex === 0 ? 'border-rose-500' :
+        slideIndex === 1 ? 'border-indigo-600' :
+          slideIndex === 2 ? 'border-sky-500' :
+            slideIndex === 3 ? 'border-emerald-500' :
+              'border-amber-500'
+        }`}></div>
+
+      {/* Icon Slider Window */}
+      <div className={`${sizeClasses[size]} overflow-hidden shadow-2xl shadow-indigo-600/30 relative z-10 bg-white dark:bg-slate-900`}>
+        {renderContent()}
+      </div>
+    </div>
+  );
+}
+
+const LoadingView = ({ fullScreen = true }: { fullScreen?: boolean }) => {
+  return (
+    <div className={`flex ${fullScreen ? 'h-screen' : 'h-full min-h-[400px]'} items-center justify-center bg-slate-50 dark:bg-slate-950 animate-in fade-in duration-500`}>
       <div className="flex flex-col items-center gap-8">
-        <div className="relative">
-          {/* Spinning Rings */}
-          <div className="absolute -inset-4 rounded-full border-4 border-slate-200 dark:border-slate-800"></div>
-          <div className={`absolute -inset-4 rounded-full border-4 border-t-transparent animate-spin transition-colors duration-500 ${slideIndex === 0 ? 'border-rose-500' :
-            slideIndex === 1 ? 'border-indigo-600' :
-              slideIndex === 2 ? 'border-sky-500' :
-                slideIndex === 3 ? 'border-emerald-500' :
-                  'border-amber-500'
-            }`}></div>
-
-          {/* Icon Slider Window */}
-          <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-2xl shadow-indigo-600/30 relative z-10 bg-white dark:bg-slate-900">
-            {renderContent()}
-          </div>
-        </div>
-
+        <LoadingSpinner size="md" />
         <div className="text-center space-y-2">
           <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">NG Volunteer Connect</h3>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">Loading...</p>

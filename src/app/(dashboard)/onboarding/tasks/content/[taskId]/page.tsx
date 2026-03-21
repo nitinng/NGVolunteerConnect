@@ -11,6 +11,8 @@ import { Progress } from "@/components/ui/progress";
 import { getGeneralOnboardingModules, getGeneralOnboardingTasks, getContentBlocks, GeneralTask, ContentBlock, getUserResponses, upsertUserResponse, getUserTaskProgress, upsertUserTaskProgress, TaskProgress } from "@/app/actions/general-onboarding-actions";
 import { slugify } from "@/lib/utils";
 
+import LoadingView from "@/components/loading-view";
+
 export default function ContentBlockPage({ params }: { params: Promise<{ taskId: string }> }) {
     const { taskId: taskSlug } = use(params);
     const router = useRouter();
@@ -201,7 +203,7 @@ export default function ContentBlockPage({ params }: { params: Promise<{ taskId:
         }
     };
 
-    if (isLoading) return <div className="p-8 text-center text-slate-500">Loading module content...</div>;
+    if (isLoading) return <LoadingView fullScreen={true} />;
     if (!task) return <div className="p-8 text-center text-slate-500">Task content not found</div>;
 
     return (

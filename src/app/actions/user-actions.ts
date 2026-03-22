@@ -29,12 +29,24 @@ export async function completeRegistration(userData: {
 
     const supabase = createAdminClient();
 
-    // Get auth user's email and fallback name
+    // 1. Check if profile already exists to avoid overriding data
+    const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("auth_user_id", userId)
+        .maybeSingle();
+
+    if (existingProfile) {
+        console.log(`[completeRegistration] Profile already exists for user ${userId}, skipping updates.`);
+        return { error: "USER_ALREADY_EXISTS" };
+    }
+
+    // 2. Get auth user's email and fallback name
     const { data: { user } } = await supabase.auth.admin.getUserById(userId);
     const email = user?.email ?? "";
     const fullName = userData.fullName || user?.user_metadata?.full_name || email;
 
-    // Update the auth user's metadata to include role and full_name
+    // 3. Update the auth user's metadata to include role and full_name
     await supabase.auth.admin.updateUserById(userId, {
         app_metadata: {
             ...user?.app_metadata,
@@ -46,7 +58,7 @@ export async function completeRegistration(userData: {
         }
     });
 
-    // 3. Upsert the Supabase profile with ALL registration form data
+    // 4. Upsert the Supabase profile with ALL registration form data
     const { error } = await supabase
         .from("profiles")
         .upsert({

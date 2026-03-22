@@ -5,13 +5,13 @@ import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSignUp, useUser } from "@/hooks/use-auth";
 import { ArrowLeft, Check, CheckCircle2, ArrowRight } from "lucide-react";
-import LoadingView, { LoadingSpinner } from "@/components/loading-view";
-import { MiniLoader } from "@/components/mini-loader";
+import LoadingView from "@/components/loading-view";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthFooter } from "@/components/auth-footer";
+import { MiniLoader } from "@/components/mini-loader";
 import {
     Select,
     SelectContent,
@@ -288,7 +288,7 @@ function RegistrationForm() {
                 </div>
 
                 {/* Right Action (Branding Slider) */}
-                <div className="w-14 h-14 flex items-center justify-center">
+                <div className="w-14 h-14">
                     <MiniLoader />
                 </div>
             </div>
@@ -323,11 +323,11 @@ function RegistrationForm() {
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
                                         Country
                                     </Label>
-                                    <Select 
-                                        value={formData.country} 
+                                    <Select
+                                        value={formData.country}
                                         onValueChange={(val) => setFormData({ ...formData, country: val, state: "", city: "" })}
                                     >
-                                        <SelectTrigger className="w-full rounded-lg py-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-indigo-500/20 text-sm font-medium">
+                                        <SelectTrigger className="w-full rounded-lg py-6 focus:ring-indigo-500/20 text-sm font-medium">
                                             <SelectValue placeholder={loadingCountries ? "Loading countries..." : "Select Country"} />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -345,12 +345,12 @@ function RegistrationForm() {
                                         <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
                                             State
                                         </Label>
-                                        <Select 
-                                            value={formData.state} 
+                                        <Select
+                                            value={formData.state}
                                             onValueChange={(val) => setFormData({ ...formData, state: val, city: "" })}
                                             disabled={!formData.country || loadingStates}
                                         >
-                                            <SelectTrigger className="w-full rounded-lg py-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-indigo-500/20 text-sm font-medium">
+                                            <SelectTrigger className="w-full rounded-lg py-6 focus:ring-indigo-500/20 text-sm font-medium">
                                                 <SelectValue placeholder={loadingStates ? "Loading..." : "Select State"} />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -370,12 +370,12 @@ function RegistrationForm() {
                                         <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
                                             City
                                         </Label>
-                                        <Select 
-                                            value={formData.city} 
+                                        <Select
+                                            value={formData.city}
                                             onValueChange={(val) => setFormData({ ...formData, city: val })}
                                             disabled={!formData.state || loadingCities}
                                         >
-                                            <SelectTrigger className="w-full rounded-lg py-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-indigo-500/20 text-sm font-medium">
+                                            <SelectTrigger className="w-full rounded-lg py-6 focus:ring-indigo-500/20 text-sm font-medium">
                                                 <SelectValue placeholder={loadingCities ? "Loading..." : "Select City"} />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -641,9 +641,7 @@ function RegistrationForm() {
                             >
                                 {loading ? (
                                     <div className="flex items-center gap-3">
-                                        <div className="scale-50 -my-4">
-                                            <MiniLoader />
-                                        </div>
+                                        <i className="fa-solid fa-spinner fa-spin"></i>
                                         <span className="text-sm">Processing...</span>
                                     </div>
                                 ) : !formData.inclusionAgreed ? (
@@ -703,7 +701,7 @@ function RegistrationForm() {
 
 export default function RegistrationPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><MiniLoader /></div>}>
+        <Suspense fallback={<LoadingView />}>
             <RegistrationForm />
         </Suspense>
     );

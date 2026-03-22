@@ -78,9 +78,7 @@ export function LoginForm() {
         <Toaster />
         <div className="p-7 md:p-8">
           <header className="text-center mb-7">
-            <div className="flex justify-center mb-5">
-              <MiniLoader />
-            </div>
+            <MiniLoader />
             <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
               {mode === 'login' && 'Welcome Back'}
               {mode === 'forgot' && 'Reset Password'}
@@ -109,9 +107,7 @@ export function LoginForm() {
                 className="w-full flex items-center justify-center gap-2.5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 py-3 rounded-lg font-bold text-slate-700 dark:text-slate-200 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all active:scale-[0.98] disabled:opacity-50 shadow-md hover:shadow-lg shadow-slate-200/50 dark:shadow-none"
               >
                 {isSocialLoading ? (
-                  <div className="scale-50 -my-4 -mx-2">
-                    <MiniLoader />
-                  </div>
+                  <i className="fa-solid fa-spinner fa-spin"></i>
                 ) : (
                   <div className="flex items-center gap-2.5">
                     <svg viewBox="0 0 24 24" width="18" height="18">
@@ -168,9 +164,7 @@ export function LoginForm() {
                 className="w-full bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white dark:text-slate-200 py-3.5 rounded-lg font-bold transition-all active:scale-[0.98] disabled:opacity-50 mt-3.5 flex items-center justify-center shadow-xl shadow-slate-900/20 dark:shadow-indigo-500/10"
               >
                 {isLoading ? (
-                  <div className="scale-50 -my-4 -mx-2">
-                    <MiniLoader />
-                  </div>
+                  <i className="fa-solid fa-spinner fa-spin mr-2"></i>
                 ) : (
                   <i className={`fa-solid ${mode === 'forgot' ? 'fa-paper-plane' : 'fa-check'} mr-2`}></i>
                 )}

@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { completeRegistration } from "@/app/actions/user-actions";
 import LoadingView from "@/components/loading-view";
 import { MiniLoader } from "@/components/mini-loader";
+import { toast } from "sonner";
+
+import { Toaster } from "@/components/ui/sonner";
 
 export default function CompleteRegistration() {
     const router = useRouter();
@@ -31,7 +34,19 @@ export default function CompleteRegistration() {
             try {
                 setStatus("Saving your preferences...");
                 const data = JSON.parse(dataStr);
-                await completeRegistration(data);
+                const result = await completeRegistration(data);
+
+                if (result?.error === "USER_ALREADY_EXISTS") {
+                    if (mounted) {
+                        toast.info("User already exists. Redirecting to login...");
+                        localStorage.removeItem("pendingRegistrationData");
+                        setTimeout(() => {
+                            router.replace("/login");
+                        }, 2000);
+                    }
+                    return;
+                }
+
                 localStorage.removeItem("pendingRegistrationData");
             } catch (e) {
                 console.error("Failed to sync registration data:", e);
@@ -54,6 +69,7 @@ export default function CompleteRegistration() {
 
     return (
         <div className="relative min-h-[100dvh]">
+            <Toaster />
             <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
                 <MiniLoader />
             </div>

@@ -44,3 +44,10 @@ next-env.d.ts
 
 *.local
 
+# Other
+.env.local
+.env
+OnboardingContent/
+supabase/seed-*.ts
+supabase/extract-onboarding-content.ts
+tmp/

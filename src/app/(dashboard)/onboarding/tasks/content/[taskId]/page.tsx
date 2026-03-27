@@ -3,7 +3,7 @@
 import { use, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Info, AlertCircle, Lightbulb, MessageSquare, Quote as QuoteIcon, List, ListOrdered, CheckSquare, ExternalLink, HelpCircle, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -292,6 +292,121 @@ export default function ContentBlockPage({ params }: { params: Promise<{ taskId:
                                     />
                                 </div>
                             )}
+                            {block.type === 'notion' && block.metadata?.url && (
+                                <div className="w-full flex flex-col gap-4 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white dark:bg-zinc-950 shadow-sm relative group">
+                                    <div className="p-4 bg-slate-50 dark:bg-zinc-900 border-b border-inherit flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded bg-white dark:bg-black border border-slate-200 dark:border-zinc-800 flex items-center justify-center shadow-sm">
+                                                <img src="https://www.notion.so/images/logo-ios.png" className="w-5 h-5 rounded-[4px]" alt="Notion" />
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-bold text-slate-900 dark:text-slate-100">{block.title || "Notion Document"}</div>
+                                                <div className="text-[10px] text-slate-500 uppercase tracking-widest font-black">Sync External Content</div>
+                                            </div>
+                                        </div>
+                                        <Button variant="outline" size="sm" className="h-8 gap-2 border-indigo-200 dark:border-indigo-900/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 text-indigo-700 dark:text-indigo-400 font-bold" asChild>
+                                            <a href={block.metadata.url} target="_blank" rel="noopener noreferrer">
+                                                <ExternalLink className="w-3 h-3" /> View Full Page
+                                            </a>
+                                        </Button>
+                                    </div>
+                                    <div className="relative aspect-[16/10] sm:aspect-video w-full bg-slate-50 dark:bg-zinc-900 flex flex-col items-center justify-center p-8 text-center overflow-hidden">
+                                        <div className="absolute inset-0 z-0 flex flex-col items-center justify-center p-12 opacity-50">
+                                            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center mb-6">
+                                                <Info className="w-8 h-8 text-slate-400" />
+                                            </div>
+                                            <h4 className="font-bold text-slate-700 dark:text-slate-200 mb-2">Embedded Preview</h4>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
+                                                Notion security settings may prevent embedding direct pages. If the content below doesn't load, use the "View Full Page" button above to open it.
+                                            </p>
+                                        </div>
+                                        <iframe 
+                                            src={block.metadata.url} 
+                                            className="relative z-10 w-full h-full border-0 bg-white dark:bg-zinc-950"
+                                            title={block.title || "Notion Content"}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {block.type === 'callout' && (
+                                <div className={`flex gap-4 p-5 rounded-xl border transition-all hover:shadow-md ${
+                                    block.metadata?.color === 'amber' ? 'bg-amber-50/50 border-amber-200/50 text-amber-900 dark:bg-amber-900/10 dark:border-amber-900/40 dark:text-amber-100' :
+                                    block.metadata?.color === 'rose' ? 'bg-rose-50/50 border-rose-200/50 text-rose-900 dark:bg-rose-900/10 dark:border-rose-900/40 dark:text-rose-100' :
+                                    block.metadata?.color === 'emerald' ? 'bg-emerald-50/50 border-emerald-200/50 text-emerald-900 dark:bg-emerald-900/10 dark:border-emerald-900/40 dark:text-emerald-100' :
+                                    block.metadata?.color === 'indigo' ? 'bg-indigo-50/50 border-indigo-200/50 text-indigo-900 dark:bg-indigo-900/10 dark:border-indigo-900/40 dark:text-indigo-100' :
+                                    block.metadata?.color === 'slate' ? 'bg-slate-50 border-slate-200 text-slate-900 dark:bg-zinc-900/50 dark:border-zinc-800 dark:text-slate-100' :
+                                    'bg-blue-50/50 border-blue-200/50 text-blue-900 dark:bg-blue-900/10 dark:border-blue-900/40 dark:text-blue-100'
+                                }`}>
+                                    <div className="text-2xl shrink-0 pt-0.5 select-none">
+                                        {block.metadata?.icon || '💡'}
+                                    </div>
+                                    <div className="flex-1 space-y-1">
+                                        {block.title && <div className="font-bold text-[15px]">{block.title}</div>}
+                                        <div className="text-[14.5px] leading-relaxed opacity-90">
+                                            <SimpleMarkdown text={block.content || ""} />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {block.type === 'quote' && (
+                                <div className="relative pl-6 py-1 border-l-4 border-slate-300 dark:border-zinc-700 italic text-xl text-slate-700 dark:text-slate-300 font-medium">
+                                    <QuoteIcon className="absolute -left-2 -top-2 w-8 h-8 text-slate-100 dark:text-zinc-800 -z-10 rotate-180" />
+                                    <SimpleMarkdown text={block.content || ""} />
+                                    {block.title && <div className="mt-3 text-sm font-bold not-italic text-slate-500">— {block.title}</div>}
+                                </div>
+                            )}
+
+                            {block.type === 'bulleted_list' && (
+                                <ul className="list-disc pl-6 space-y-2.5">
+                                    {(block.content || "").split('\n').filter(l => l.trim()).map((line, idx) => (
+                                        <li key={idx} className="text-slate-700 dark:text-slate-300 text-[15.5px]">
+                                            {formatInline(line.startsWith('- ') || line.startsWith('* ') ? line.substring(2) : line)}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+
+                            {block.type === 'numbered_list' && (
+                                <ol className="list-decimal pl-6 space-y-2.5">
+                                    {(block.content || "").split('\n').filter(l => l.trim()).map((line, idx) => (
+                                        <li key={idx} className="text-slate-700 dark:text-slate-300 text-[15.5px]">
+                                            {formatInline(line.replace(/^\d+\.\s+/, ''))}
+                                        </li>
+                                    ))}
+                                </ol>
+                            )}
+
+                            {block.type === 'to_do' && (
+                                <div className="flex flex-col gap-3">
+                                    {(block.content || "").split('\n').filter(l => l.trim()).map((line, idx) => (
+                                        <div key={idx} className="flex items-start gap-3 group">
+                                            <div className="mt-1 transition-transform group-hover:scale-110 cursor-pointer">
+                                                <div className="w-[18px] h-[18px] rounded border-2 border-slate-300 dark:border-zinc-700 flex items-center justify-center"></div>
+                                            </div>
+                                            <span className="text-slate-700 dark:text-slate-300 text-[15.5px]">
+                                                {formatInline(line)}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {block.type === 'toggle' && (
+                                <details className="group w-full border border-slate-100 dark:border-zinc-800 rounded-lg overflow-hidden bg-slate-50/30 dark:bg-zinc-900/10">
+                                    <summary className="flex items-center gap-3 p-4 list-none cursor-pointer hover:bg-slate-100/50 dark:hover:bg-zinc-800/30 transition-colors select-none">
+                                        <div className="p-1 rounded bg-slate-200 dark:bg-zinc-700 group-open:rotate-180 transition-transform">
+                                            <ChevronDown className="w-3.5 h-3.5" />
+                                        </div>
+                                        <span className="font-bold text-slate-800 dark:text-slate-200">{block.title || "View Details"}</span>
+                                    </summary>
+                                    <div className="px-5 pb-5 pt-3 border-t border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-950/20">
+                                        <SimpleMarkdown text={block.content || ""} />
+                                    </div>
+                                </details>
+                            )}
+
                             {block.type === 'divider' && (
                                 <hr className="border-slate-200 dark:border-zinc-800 my-4" />
                             )}
@@ -299,7 +414,10 @@ export default function ContentBlockPage({ params }: { params: Promise<{ taskId:
                                 <Card className="bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 shadow-sm relative overflow-hidden">
                                     <CardContent className="pt-6">
                                         <div className="flex items-center justify-between mb-2 gap-4">
-                                            <h3 className="font-bold text-blue-900 dark:text-blue-100 whitespace-pre-wrap flex-1">{block.content || block.title}</h3>
+                                            <h3 className="font-bold text-blue-900 dark:text-blue-100 whitespace-pre-wrap flex-1 flex items-center gap-2">
+                                                <HelpCircle className="w-5 h-5 opacity-70" />
+                                                {block.content || block.title}
+                                            </h3>
                                             {responses[block.id]?.status === 'draft' && <span className="text-[10px] uppercase tracking-wider bg-slate-200 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 px-2 py-1 rounded-full font-bold shrink-0">Draft</span>}
                                             {responses[block.id]?.status === 'submitted' && <span className="text-[10px] uppercase tracking-wider bg-emerald-200 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-400 px-2 py-1 rounded-full font-bold flex items-center gap-1 shrink-0"><CheckCircle2 className="w-3 h-3"/> Submitted</span>}
                                         </div>
@@ -421,55 +539,81 @@ export default function ContentBlockPage({ params }: { params: Promise<{ taskId:
 function SimpleMarkdown({ text }: { text: string }) {
     if (!text) return null;
     
-    const lines = text.split('\n');
-    let insideList = false;
+    // Split into paragraphs by double newlines
+    const paragraphs = text.split('\n\n');
 
     return (
         <div className="space-y-4 text-[15.5px] leading-[1.75]">
-            {lines.map((line, i) => {
-                const isBullet = line.trim().startsWith('- ') || line.trim().startsWith('* ');
+            {paragraphs.map((paragraph, pi) => {
+                const lines = paragraph.split('\n');
                 
-                if (line.startsWith('### ')) {
-                    return <h4 key={i} className="text-[19px] font-bold mt-6 mb-3 text-slate-900 dark:text-slate-100">{formatInline(line.replace('### ', ''))}</h4>
-                }
-                if (line.startsWith('## ')) {
-                    return <h3 key={i} className="text-2xl font-bold mt-8 mb-4 border-b border-slate-100 dark:border-zinc-800 pb-2 text-slate-900 dark:text-slate-100">{formatInline(line.replace('## ', ''))}</h3>
-                }
-                if (line.startsWith('# ')) {
-                    return <h2 key={i} className="text-3xl font-extrabold mt-8 mb-4 text-slate-900 dark:text-slate-100">{formatInline(line.replace('# ', ''))}</h2>
-                }
-                if (isBullet) {
-                    const content = line.trim().substring(2);
-                    return <ul key={i} className="list-disc pl-5 mt-1 text-slate-700 dark:text-slate-300"><li className="py-0.5">{formatInline(content)}</li></ul>
-                }
-                // Handle horizontal rules ---
-                if (line.trim() === '---') {
-                    return <hr key={i} className="border-slate-200 dark:border-zinc-800 my-8" />
-                }
-                
-                if (line.trim() === '') return <div key={i} className="h-1"></div>;
+                return (
+                    <div key={pi} className="space-y-2">
+                        {lines.map((line, i) => {
+                            const isBullet = line.trim().startsWith('- ') || line.trim().startsWith('* ');
+                            
+                            if (line.startsWith('### ')) {
+                                return <h4 key={i} className="text-[19px] font-bold mt-6 mb-3 text-slate-900 dark:text-slate-100">{formatInline(line.replace('### ', ''))}</h4>
+                            }
+                            if (line.startsWith('## ')) {
+                                return <h3 key={i} className="text-2xl font-bold mt-8 mb-4 border-b border-slate-100 dark:border-zinc-800 pb-2 text-slate-900 dark:text-slate-100">{formatInline(line.replace('## ', ''))}</h3>
+                            }
+                            if (line.startsWith('# ')) {
+                                return <h2 key={i} className="text-3xl font-extrabold mt-8 mb-4 text-slate-900 dark:text-slate-100">{formatInline(line.replace('# ', ''))}</h2>
+                            }
+                            if (isBullet) {
+                                const content = line.trim().substring(2);
+                                return <ul key={i} className="list-disc pl-5 mt-1 text-slate-700 dark:text-slate-300"><li className="py-0.5">{formatInline(content)}</li></ul>
+                            }
+                            // Handle horizontal rules ---
+                            if (line.trim() === '---') {
+                                return <hr key={i} className="border-slate-200 dark:border-zinc-800 my-8" />
+                            }
+                            
+                            if (line.trim() === '') return null;
 
-                return <p key={i} className="text-slate-700 dark:text-slate-300">{formatInline(line)}</p>;
+                            return <p key={i} className="text-slate-700 dark:text-slate-300">{formatInline(line)}</p>;
+                        })}
+                    </div>
+                );
             })}
         </div>
     )
 }
 
 function formatInline(text: string) {
-    // Handling basic bold `**bold**`
-    const boldRegex = /\*\*(.*?)\*\*/g;
-    const parts = text.split(boldRegex);
+    if (!text) return null;
     
-    if (parts.length === 1) return text;
+    // 1. Handling basic bold `**bold**`
+    // 2. Handling basic italic `*italic*`
+    // 3. Handling inline code `` `code` ``
+    // 4. Handling links `[text](url)`
     
-    return (
-        <>
-            {parts.map((part, index) => {
-                if (index % 2 === 1) {
-                    return <strong key={index} className="font-semibold text-slate-900 dark:text-slate-100">{part}</strong>
-                }
-                return part;
-            })}
-        </>
-    );
+    let parts: (string | React.ReactNode)[] = [text];
+
+    // Bold
+    parts = parts.flatMap(p => {
+        if (typeof p !== 'string') return p;
+        const boldRegex = /\*\*(.*?)\*\*/g;
+        const split = p.split(boldRegex);
+        return split.map((s, i) => i % 2 === 1 ? <strong key={i} className="font-semibold text-slate-900 dark:text-slate-100">{s}</strong> : s);
+    });
+
+    // Italic
+    parts = parts.flatMap(p => {
+        if (typeof p !== 'string') return p;
+        const italicRegex = /\*(.*?)\*/g;
+        const split = p.split(italicRegex);
+        return split.map((s, i) => i % 2 === 1 ? <em key={i} className="italic">{s}</em> : s);
+    });
+
+    // Code
+    parts = parts.flatMap(p => {
+        if (typeof p !== 'string') return p;
+        const codeRegex = /`(.*?)`/g;
+        const split = p.split(codeRegex);
+        return split.map((s, i) => i % 2 === 1 ? <code key={i} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 font-mono text-sm text-indigo-600 dark:text-indigo-400">{s}</code> : s);
+    });
+
+    return <>{parts}</>;
 }

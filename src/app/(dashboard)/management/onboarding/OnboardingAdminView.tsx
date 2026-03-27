@@ -656,6 +656,7 @@ export default function OnboardingAdminView() {
                                     <Card className="border-blue-200 bg-blue-50/20 shadow-none ring-1 ring-blue-100 fade-in-0">
                                         <CardHeader className="pb-3">
                                             <CardTitle className="text-md">{editingBlock.id ? "Edit Block" : "Add Content Block"}</CardTitle>
+                                            <CardDescription className="text-xs">Use blocks to build content with Notion-like styles (Callouts, Quotes, Lists, Tables etc.)</CardDescription>
                                         </CardHeader>
                                         <CardContent className="space-y-4">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -667,6 +668,13 @@ export default function OnboardingAdminView() {
                                                             <SelectItem value="heading">Heading</SelectItem>
                                                             <SelectItem value="text">Text (Markdown format)</SelectItem>
                                                             <SelectItem value="plain_text">Plain Text (No markdown)</SelectItem>
+                                                            <SelectItem value="notion">Notion Page (Embed)</SelectItem>
+                                                            <SelectItem value="callout">Callout (Important Note)</SelectItem>
+                                                            <SelectItem value="quote">Quote</SelectItem>
+                                                            <SelectItem value="bulleted_list">Bulleted List</SelectItem>
+                                                            <SelectItem value="numbered_list">Numbered List</SelectItem>
+                                                            <SelectItem value="to_do">To-do List</SelectItem>
+                                                            <SelectItem value="toggle">Toggle (Expandable)</SelectItem>
                                                             <SelectItem value="embed">Video/Audio Embed</SelectItem>
                                                             <SelectItem value="pdf_viewer">PDF Document</SelectItem>
                                                             <SelectItem value="reflection_question">Reflection Question</SelectItem>
@@ -693,26 +701,35 @@ export default function OnboardingAdminView() {
                                                 <Input value={editingBlock.title || ''} onChange={e => setEditingBlock({ ...editingBlock, title: e.target.value })} placeholder="e.g. NavGurukul Mission Video" />
                                             </div>
 
-                                            {['text', 'plain_text', 'heading', 'reflection_question', 'quiz_mcq'].includes(editingBlock.type || '') && (
+                                            {(editingBlock.type === 'text' || editingBlock.type === 'plain_text' || editingBlock.type === 'heading' || editingBlock.type === 'reflection_question' || editingBlock.type === 'quiz_mcq' || editingBlock.type === 'callout' || editingBlock.type === 'quote' || editingBlock.type === 'bulleted_list' || editingBlock.type === 'numbered_list' || editingBlock.type === 'to_do' || editingBlock.type === 'toggle') && (
                                                 <div className="space-y-2">
                                                     <label className="text-xs font-bold text-slate-700">Content / Prompt / Question</label>
                                                     <Textarea 
                                                         className="min-h-[150px] font-mono text-sm leading-relaxed" 
                                                         value={editingBlock.content || ''} 
                                                         onChange={e => setEditingBlock({ ...editingBlock, content: e.target.value })} 
-                                                        placeholder="Enter markdown text or question prompt here..." 
+                                                        placeholder={
+                                                           editingBlock.type === 'bulleted_list' || editingBlock.type === 'numbered_list' || editingBlock.type === 'to_do'
+                                                           ? "Enter each item on a new line..."
+                                                           : "Enter markdown text or question prompt here..."
+                                                        }
                                                     />
                                                 </div>
                                             )}
 
-                                            {editingBlock.type === 'embed' && (
+                                            {(editingBlock.type === 'embed' || editingBlock.type === 'notion') && (
                                                 <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-slate-700">Embed URL (Youtube, Vimeo, etc)</label>
+                                                    <label className="text-xs font-bold text-slate-700">{editingBlock.type === 'notion' ? 'Notion Page URL (Make sure it is public)' : 'Embed URL (Youtube, Vimeo, etc)'}</label>
                                                     <Input 
                                                         value={editingBlock.metadata?.url || ''} 
                                                         onChange={e => setEditingBlock({ ...editingBlock, metadata: { ...(editingBlock.metadata || {}), url: e.target.value } })} 
-                                                        placeholder="https://youtube.com/..." 
+                                                        placeholder={editingBlock.type === 'notion' ? "https://notion.so/..." : "https://youtube.com/..."} 
                                                     />
+                                                    {editingBlock.type === 'notion' && (
+                                                        <p className="text-[10px] text-amber-600 font-medium">
+                                                            Note: Most Notion pages block embedding for security. A link fallback is automatically provided for the user.
+                                                        </p>
+                                                    )}
                                                 </div>
                                             )}
 
@@ -724,6 +741,38 @@ export default function OnboardingAdminView() {
                                                         onChange={e => setEditingBlock({ ...editingBlock, metadata: { ...(editingBlock.metadata || {}), url: e.target.value } })} 
                                                         placeholder="https://example.com/document.pdf" 
                                                     />
+                                                </div>
+                                            )}
+                                            
+                                            {editingBlock.type === 'callout' && (
+                                                <div className="space-y-4 pt-2">
+                                                     <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-bold text-slate-700">Icon (Emoji or Icon Name)</label>
+                                                            <Input 
+                                                                value={editingBlock.metadata?.icon || '💡'} 
+                                                                onChange={e => setEditingBlock({ ...editingBlock, metadata: { ...(editingBlock.metadata || {}), icon: e.target.value } })} 
+                                                                placeholder="💡 or Rocket" 
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-bold text-slate-700">Color</label>
+                                                            <Select 
+                                                                value={editingBlock.metadata?.color || 'blue'} 
+                                                                onValueChange={v => setEditingBlock({ ...editingBlock, metadata: { ...(editingBlock.metadata || {}), color: v } })}
+                                                             >
+                                                                 <SelectTrigger><SelectValue placeholder="Color..." /></SelectTrigger>
+                                                                 <SelectContent>
+                                                                     <SelectItem value="blue">Blue</SelectItem>
+                                                                     <SelectItem value="amber">Amber</SelectItem>
+                                                                     <SelectItem value="rose">Rose</SelectItem>
+                                                                     <SelectItem value="emerald">Emerald</SelectItem>
+                                                                     <SelectItem value="slate">Gray</SelectItem>
+                                                                     <SelectItem value="indigo">Indigo</SelectItem>
+                                                                 </SelectContent>
+                                                             </Select>
+                                                        </div>
+                                                     </div>
                                                 </div>
                                             )}
 

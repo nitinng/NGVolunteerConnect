@@ -593,8 +593,8 @@ first. P0 items must be completed before any P1 task can start. Red = P0
 
   **F3**   Add volunteer_type field   **P0**         Dev             *F1, All flows*
            to Clerk public metadata;                                 
-           update middleware                                         
-           role-guard                                                
+           update proxy                                         
+           role-guard                                 
 
   **F4**   Build server actions to    **P0**         Dev             *F2, F3*
            sync Clerk user data →                                    

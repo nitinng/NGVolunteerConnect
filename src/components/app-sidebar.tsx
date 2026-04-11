@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   Ticket,
   Video,
+  Briefcase,
 } from "lucide-react"
 
 import { NavMain, NavItem } from "@/components/nav-main"
@@ -73,6 +74,13 @@ export function AppSidebar({ role, devOverride, isLocked, ...props }: React.Comp
     });
   }
 
+  // Everyone (except Operations which already gets full dashboard) gets a Projects view
+  navGeneral.push({
+    title: "Projects",
+    url: "/projects",
+    icon: Briefcase,
+  });
+
   // Top-level Onboarding (for the user's own journey)
   if (isVolunteer) {
     navGeneral.push({
@@ -114,6 +122,11 @@ export function AppSidebar({ role, devOverride, isLocked, ...props }: React.Comp
             url: "/users-trends",
           },
         ]
+      },
+      {
+        title: "Projects",
+        url: "/management/projects",
+        icon: Briefcase,
       },
       {
         title: "Onboarding",

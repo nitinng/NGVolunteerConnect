@@ -145,14 +145,17 @@ CREATE TABLE IF NOT EXISTS market_rate_lookup (
 -- ─────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS projects (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  created_by_clerk_id text NOT NULL,
+  created_by_auth_id text NOT NULL,
   title text NOT NULL,
   description text,
+  department_id uuid REFERENCES departments(id) ON DELETE SET NULL,
   team text,
   required_skill_ids uuid[],
   volunteers_needed integer DEFAULT 1,
   estimated_hours_per_week integer,
   duration_weeks integer,
+  start_date timestamptz,
+  end_date timestamptz,
   approval_mode text DEFAULT 'open' CHECK (approval_mode IN ('open', 'curated')),
   screening_questions jsonb DEFAULT '[]'::jsonb,
   impact_tier text DEFAULT 'Community'
@@ -172,6 +175,7 @@ CREATE TABLE IF NOT EXISTS volunteer_applications (
   screening_answers jsonb DEFAULT '[]'::jsonb,
   status text DEFAULT 'pending'
     CHECK (status IN ('pending', 'approved', 'rejected', 'withdrawn')),
+  rejection_reason text,
   applied_at timestamptz DEFAULT now(),
   reviewed_at timestamptz,
   reviewed_by text,
@@ -222,6 +226,32 @@ CREATE TABLE IF NOT EXISTS task_assignments (
   UNIQUE(task_id, subcategory_id)
 );
 
+-- ─────────────────────────────────────────────────────────
+-- 12. project_onboarding_steps — project specific tasks
+-- ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS project_onboarding_steps (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id uuid REFERENCES projects(id) ON DELETE CASCADE,
+  step_order integer NOT NULL DEFAULT 0,
+  title text NOT NULL,
+  description text,
+  type text NOT NULL CHECK (type IN ('info', 'form', 'checkbox')),
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- ─────────────────────────────────────────────────────────
+-- 13. volunteer_onboarding_progress — tracking project application progress
+-- ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS volunteer_onboarding_progress (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  application_id uuid REFERENCES volunteer_applications(id) ON DELETE CASCADE,
+  step_id uuid REFERENCES project_onboarding_steps(id) ON DELETE CASCADE,
+  completed boolean DEFAULT false,
+  completed_at timestamptz,
+  UNIQUE(application_id, step_id)
+);
+
 
 -- ============================================================
 -- ROW LEVEL SECURITY
@@ -240,6 +270,8 @@ ALTER TABLE volunteer_applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE volunteer_contributions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE onboarding_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_onboarding_steps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE volunteer_onboarding_progress ENABLE ROW LEVEL SECURITY;
 
 -- Profiles
 DROP POLICY IF EXISTS "profiles: own row" ON profiles;
@@ -283,6 +315,15 @@ CREATE POLICY "contributions: read" ON volunteer_contributions
 -- Volunteer skills
 DROP POLICY IF EXISTS "volunteer_skills: own" ON volunteer_skills;
 CREATE POLICY "volunteer_skills: own" ON volunteer_skills
+  FOR ALL USING (true) WITH CHECK (true);
+
+-- Project onboarding steps (public read for now, projects control assignment)
+DROP POLICY IF EXISTS "project_onboarding_steps: read" ON project_onboarding_steps;
+CREATE POLICY "project_onboarding_steps: read" ON project_onboarding_steps FOR SELECT USING (true);
+
+-- Volunteer onboarding progress (public read/update for now)
+DROP POLICY IF EXISTS "volunteer_onboarding_progress: read_update" ON volunteer_onboarding_progress;
+CREATE POLICY "volunteer_onboarding_progress: read_update" ON volunteer_onboarding_progress
   FOR ALL USING (true) WITH CHECK (true);
 
 

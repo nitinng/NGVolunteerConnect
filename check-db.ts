@@ -1,3 +1,4 @@
+export {};
 const { createClient } = require('@supabase/supabase-js');
 const dotenv = require('dotenv');
 dotenv.config();

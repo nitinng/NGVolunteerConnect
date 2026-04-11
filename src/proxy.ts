@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server"
 // Public routes — no auth required
 const publicRoutes = ['/login', '/register', '/sso-callback', '/auth/callback'];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     let supabaseResponse = NextResponse.next({
         request,
     })

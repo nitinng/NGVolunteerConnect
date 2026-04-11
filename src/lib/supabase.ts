@@ -172,11 +172,14 @@ export interface Project {
     created_by_auth_id: string;
     title: string;
     description: string | null;
+    department_id: string | null;
     team: string | null;
     required_skill_ids: string[] | null;
     volunteers_needed: number;
     estimated_hours_per_week: number | null;
     duration_weeks: number | null;
+    start_date: string | null;
+    end_date: string | null;
     approval_mode: ApprovalMode;
     screening_questions: string[];
     impact_tier: ImpactTier;
@@ -190,6 +193,7 @@ export interface VolunteerApplication {
     profile_id: string;
     screening_answers: string[];
     status: ApplicationStatus;
+    rejection_reason: string | null;
     applied_at: string;
     reviewed_at: string | null;
     reviewed_by: string | null;
@@ -225,6 +229,27 @@ export interface TaskAssignment {
     id: string;
     task_id: string;
     subcategory_id: string;
+}
+
+export type ProjectOnboardingStepType = 'info' | 'form' | 'checkbox';
+
+export interface ProjectOnboardingStep {
+    id: string;
+    project_id: string;
+    step_order: number;
+    title: string;
+    description: string | null;
+    type: ProjectOnboardingStepType;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface VolunteerOnboardingProgress {
+    id: string;
+    application_id: string;
+    step_id: string;
+    completed: boolean;
+    completed_at: string | null;
 }
 
 export type WebinarStatus = 'draft' | 'planned' | 'ongoing' | 'completed' | 'cancelled';

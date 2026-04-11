@@ -139,16 +139,22 @@ export function UsersRegistryClient({ initialUsers, currentUserId, actorRole, ac
     };
 
     const handleDelete = async (userId: string) => {
-        if (!confirm("Are you sure you want to completely remove this user?")) return;
-        setLoadingAction(userId);
-        const res = await deleteUserAction(userId);
-        if (res.success) {
-            toast.success("User deleted successfully!");
-            setUsers(users.filter((u) => u.id !== userId));
-        } else {
-            toast.error(res.error || "Failed to delete user");
-        }
-        setLoadingAction(null);
+        toast("Are you sure you want to completely remove this user?", {
+            action: {
+                label: "Delete",
+                onClick: async () => {
+                    setLoadingAction(userId);
+                    const res = await deleteUserAction(userId);
+                    if (res.success) {
+                        toast.success("User deleted successfully!");
+                        setUsers(users.filter((u) => u.id !== userId));
+                    } else {
+                        toast.error(res.error || "Failed to delete user");
+                    }
+                    setLoadingAction(null);
+                },
+            },
+        });
     };
 
     const handleRoleChange = async (userId: string, newRole: string) => {

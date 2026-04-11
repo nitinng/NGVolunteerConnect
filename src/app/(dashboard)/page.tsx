@@ -8,7 +8,8 @@ import {
     getGeneralOnboardingModules, 
     getGeneralOnboardingTasks, 
     getAllContentBlocks, 
-    getUserTaskProgress 
+    getUserTaskProgress,
+    isOnboardingLockedForUser
 } from "@/app/actions/general-onboarding-actions"
 import { calculateProfileCompletion } from "@/lib/profile-utils"
 import { currentUser } from "@/lib/auth"
@@ -23,18 +24,22 @@ export default async function Page() {
   let serverCompletion = 0;
   let serverStats = { totalPages: 0, completedPages: 0, percentage: 0 };
   let serverUniqRoles: string[] = [];
+  let isLocked = false;
 
   if (role === 'Volunteer') {
     const publicMetadata = user?.publicMetadata || {};
 
-    const [profile, dbCategories, loadedModules, loadedTasks, loadedBlocks, loadedProgress] = await Promise.all([
+    const [profile, dbCategories, loadedModules, loadedTasks, loadedBlocks, loadedProgress, lockedStatus] = await Promise.all([
         getMyProfile(),
         getSkillCategories(),
         getGeneralOnboardingModules(),
         getGeneralOnboardingTasks(),
         getAllContentBlocks(),
-        getUserTaskProgress()
+        getUserTaskProgress(),
+        getMyProfile().then(p => p ? isOnboardingLockedForUser(p.id) : false)
     ]);
+
+    isLocked = lockedStatus;
 
     serverProfile = profile;
     
@@ -88,6 +93,7 @@ export default async function Page() {
             serverCompletion={serverCompletion}
             serverStats={serverStats}
             serverUniqRoles={serverUniqRoles}
+            isLocked={isLocked}
         />
       ) : (
         <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">

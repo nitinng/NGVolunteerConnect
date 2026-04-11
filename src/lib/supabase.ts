@@ -123,6 +123,8 @@ export interface Profile {
 
     // Platform meta
     onboarding_completed: boolean;
+    onboarding_percentage: number | null;
+    onboarding_status: "default" | "locked" | "unlocked";
     created_at: string;
     updated_at: string;
 }
@@ -223,4 +225,31 @@ export interface TaskAssignment {
     id: string;
     task_id: string;
     subcategory_id: string;
+}
+
+export type WebinarStatus = 'draft' | 'planned' | 'ongoing' | 'completed' | 'cancelled';
+export type WebinarType = 'one_off' | 'recurring';
+
+export interface Webinar {
+    id: string;
+    title: string;
+    date: string;
+    agenda: string | null;
+    department: string | null;
+    gmeet_link: string | null;
+    is_open_to_all: boolean;
+    type: WebinarType;
+    status: WebinarStatus;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface WebinarHost {
+    webinar_id: string;
+    profile_id: string;
+}
+
+export interface WebinarParticipant {
+    webinar_id: string;
+    profile_id: string;
 }

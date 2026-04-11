@@ -31,9 +31,10 @@ interface OnboardingViewProps {
     serverCompletedModules: string[];
     serverStats: { totalPages: number; completedPages: number; percentage: number };
     serverCompletion: number;
+    isLocked: boolean;
 }
 
-export default function OnboardingView({ serverModules, serverCompletedModules, serverStats, serverCompletion }: OnboardingViewProps) {
+export default function OnboardingView({ serverModules, serverCompletedModules, serverStats, serverCompletion, isLocked }: OnboardingViewProps) {
     const router = useRouter();
     
     const modules = serverModules;
@@ -86,21 +87,27 @@ export default function OnboardingView({ serverModules, serverCompletedModules, 
                     </div>
 
                     <div
-                        className="group flex flex-col justify-between p-4 md:p-6 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900/40 backdrop-blur-md shadow-sm hover:shadow-md hover:border-emerald-500/50 transition-all"
+                        className={`group flex flex-col justify-between p-4 md:p-6 rounded-lg border border-slate-200 dark:border-white/10 ${isLocked ? "bg-slate-50 dark:bg-zinc-900/10 grayscale border-dashed" : "bg-white dark:bg-zinc-900/40"} backdrop-blur-md shadow-sm transition-all`}
                     >
                         <div className="flex items-center gap-4">
-                            <div className="p-3 rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50">
-                                <CheckCircle2 className="w-6 h-6" />
+                            <div className={`p-3 rounded-lg ${isLocked ? "bg-slate-200 text-slate-400" : "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50"}`}>
+                                {isLocked ? <Lock className="w-6 h-6" /> : <CheckCircle2 className="w-6 h-6" />}
                             </div>
                             <div className="flex-1">
-                                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px]">
-                                    {stats.percentage === 100 ? "General Onboarding complete!" : "Complete your General Onboarding"}
+                                <h3 className={`font-bold text-slate-900 dark:text-slate-100 text-[15px] ${isLocked ? "italic" : ""}`}>
+                                    {isLocked ? "Onboarding is locked" : stats.percentage === 100 ? "General Onboarding complete!" : "Complete your General Onboarding"}
                                 </h3>
-                                <Progress value={stats.percentage} className="h-1 mt-2 bg-emerald-200/50" indicatorClassName="bg-emerald-600" />
+                                {isLocked ? (
+                                    <p className="text-[10px] text-slate-400 mt-1">Will be unlocked for you soon</p>
+                                ) : (
+                                    <Progress value={stats.percentage} className="h-1 mt-2 bg-emerald-200/50" indicatorClassName="bg-emerald-600" />
+                                )}
                             </div>
-                            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-bold text-sm min-w-[56px] flex items-center justify-center">
-                                {stats.percentage}%
-                            </div>
+                            {!isLocked && (
+                                <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-bold text-sm min-w-[56px] flex items-center justify-center">
+                                    {stats.percentage}%
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -115,8 +122,18 @@ export default function OnboardingView({ serverModules, serverCompletedModules, 
                     </h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {generalModules.map((mod) => {
+                <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 ${isLocked ? "opacity-50 pointer-events-none" : ""}`}>
+                    {isLocked ? (
+                        <div className="md:col-span-2 lg:col-span-4 p-12 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50/50 dark:bg-zinc-900/20 text-center">
+                             <div className="p-4 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-400 mb-4 shadow-inner">
+                                <Lock className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Onboarding Modules are Hidden</h3>
+                            <p className="text-sm text-slate-500 max-w-sm mx-auto mt-2 leading-relaxed">
+                                Your general onboarding is currently locked. It will be unlocked by the administrator once your initial verification is complete.
+                            </p>
+                        </div>
+                    ) : generalModules.map((mod) => {
                         const idxInFullList = modules.findIndex(m => m.id === mod.id);
                         const isCompleted = completedModules.includes(mod.id);
                         const isUnlocked = idxInFullList === 0 || completedModules.includes(modules[idxInFullList - 1].id);

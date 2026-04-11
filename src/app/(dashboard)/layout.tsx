@@ -32,16 +32,24 @@ export default async function DashboardLayout({
 
     // F4: Ensure every authenticated user has a Supabase profile row.
     // This is a no-op if the profile already exists — safe to call on every load.
+    let isLocked = false;
     try {
         if (user) {
             await syncProfileToSupabase({
                 authUserId: user.id,
                 email: user.emailAddresses[0]?.emailAddress ?? "",
                 fullName: (`${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.emailAddresses[0]?.emailAddress) ?? "Unknown",
-            })
+            });
+            
+            const { getMyProfile } = await import("@/app/actions/profile-actions");
+            const { isOnboardingLockedForUser } = await import("@/app/actions/general-onboarding-actions");
+            const profile = await getMyProfile();
+            if (profile) {
+                isLocked = await isOnboardingLockedForUser(profile.id);
+            }
         }
-    } catch {
-        // Non-fatal — log silently, don't block the page
+    } catch (e) {
+        console.error("DashboardLayout context error:", e);
     }
 
     return (
@@ -54,6 +62,7 @@ export default async function DashboardLayout({
             lastName: user.lastName || "",
             role: baseRole,
             volunteerEnabled: volunteerEnabled,
+            isOnboardingLocked: isLocked,
             publicMetadata: user.publicMetadata || {},
         } : null}>
             <div className="[--header-height:calc(--spacing(14))]">
@@ -65,7 +74,7 @@ export default async function DashboardLayout({
                         volunteerEnabled={volunteerEnabled}
                     />
                     <div className="flex flex-1">
-                        <AppSidebar role={currentRole} devOverride={rawDevOverride} />
+                        <AppSidebar role={currentRole} devOverride={rawDevOverride} isLocked={isLocked} />
                         <SidebarInset>
                             {children}
                         </SidebarInset>

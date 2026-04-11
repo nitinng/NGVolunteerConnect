@@ -11,6 +11,8 @@ import {
   UserCircle,
   UserCog,
   LayoutDashboard,
+  Ticket,
+  Video,
 } from "lucide-react"
 
 import { NavMain, NavItem } from "@/components/nav-main"
@@ -37,7 +39,7 @@ const data = {
     },
     {
       title: "Support",
-      url: "#",
+      url: "/support",
       icon: LifeBuoy,
     },
     {
@@ -48,7 +50,7 @@ const data = {
   ],
 }
 
-export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps<typeof Sidebar> & { role?: UserRole, devOverride?: string }) {
+export function AppSidebar({ role, devOverride, isLocked, ...props }: React.ComponentProps<typeof Sidebar> & { role?: UserRole, devOverride?: string, isLocked?: boolean }) {
   const { setOpenMobile, isMobile } = useSidebar()
   // Determine if it's a volunteer view
   const activeRole = role || 'Volunteer';
@@ -62,6 +64,14 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
       isActive: true,
     },
   ];
+
+  if (isVolunteer) {
+    navGeneral.push({
+      title: "Events",
+      url: "/events",
+      icon: Video,
+    });
+  }
 
   // Top-level Onboarding (for the user's own journey)
   if (isVolunteer) {
@@ -121,9 +131,39 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
         ]
       },
       {
-        title: "Departments",
-        url: "/management/departments",
-        icon: Building,
+        title: "Support Ops Hub",
+        url: "#",
+        icon: LifeBuoy,
+        items: [
+          {
+            title: "Manage Departments",
+            url: "/management/departments",
+          },
+          {
+            title: "All Tickets",
+            url: "/management/ticketing/all-tickets",
+          },
+          {
+            title: "Ticketing Settings",
+            url: "/management/ticketing/settings",
+          },
+          {
+            title: "FAQs Editor",
+            url: "/management/support/faqs",
+          },
+          {
+            title: "Contact US Directory",
+            url: "/management/support/contact",
+          },
+          {
+            title: "Feedback Forms & Logs",
+            url: "/management/support/feedback",
+          },
+          {
+            title: "Webinars",
+            url: "/management/support/webinars",
+          },
+        ]
       },
       {
         title: "Analytics Dashboard",
@@ -131,6 +171,21 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
         icon: PieChart,
       }
     );
+  }
+
+  const navComponents: NavItem[] = [];
+  if (activeRole === 'Admin') {
+    navComponents.push({
+      title: "Design System",
+      url: "#",
+      icon: LayoutDashboard,
+      items: [
+        {
+          title: "Toasts / Sonner",
+          url: "/management/components/toasts",
+        },
+      ]
+    });
   }
 
   return (
@@ -169,6 +224,9 @@ export function AppSidebar({ role, devOverride, ...props }: React.ComponentProps
         <NavMain items={navGeneral} />
         {navManagement.length > 0 && (
           <NavMain items={navManagement} label="Management" />
+        )}
+        {navComponents.length > 0 && (
+          <NavMain items={navComponents} label="Components" />
         )}
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>

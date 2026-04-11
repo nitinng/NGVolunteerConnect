@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRight, type LucideIcon } from "lucide-react"
+import { ChevronRight, type LucideIcon, Lock } from "lucide-react"
 import * as React from "react"
 
 import {
@@ -27,13 +27,29 @@ export type NavItem = {
   url: string
   icon?: LucideIcon
   isActive?: boolean
+  disabled?: boolean
+  tooltipOverride?: string
   items?: NavItem[]
 }
 
-function NavItem({ item, level = 0 }: { item: NavItem, level?: number }) {
+function NavItem({ 
+  item, 
+  level = 0,
+  isOpen: controlledIsOpen,
+  onOpenChange: controlledOnOpenChange
+}: { 
+  item: NavItem, 
+  level?: number,
+  isOpen?: boolean,
+  onOpenChange?: (open: boolean) => void 
+}) {
   const { setOpenMobile, isMobile } = useSidebar()
   const hasSubItems = !!item.items?.length
-  const [isOpen, setIsOpen] = React.useState(!!item.isActive)
+  
+  const [localIsOpen, setLocalIsOpen] = React.useState(!!item.isActive)
+
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : localIsOpen;
+  const setIsOpen = controlledOnOpenChange !== undefined ? controlledOnOpenChange : setLocalIsOpen;
 
   if (!hasSubItems) {
     const Component = level === 0 ? SidebarMenuButton : SidebarMenuSubButton
@@ -42,19 +58,31 @@ function NavItem({ item, level = 0 }: { item: NavItem, level?: number }) {
     return (
       <ItemWrapper key={item.title}>
         <Component
-          asChild
-          tooltip={item.title}
+          asChild={!item.disabled}
+          tooltip={item.tooltipOverride || item.title}
           isActive={item.isActive}
+          disabled={item.disabled}
+          className={item.disabled ? "opacity-50 cursor-not-allowed" : ""}
         >
-          <Link 
-            href={item.url}
-            onClick={() => {
-              if (isMobile) setOpenMobile(false)
-            }}
-          >
-            {item.icon && <item.icon />}
-            <span>{item.title}</span>
-          </Link>
+          {item.disabled ? (
+            <div className="flex items-center gap-2 px-2 py-1.5 grayscale">
+              {item.icon && <item.icon />}
+              <span>{item.title}</span>
+              <div className="ml-auto">
+                <Lock className="w-3 h-3" />
+              </div>
+            </div>
+          ) : (
+            <Link 
+              href={item.url}
+              onClick={() => {
+                if (isMobile) setOpenMobile(false)
+              }}
+            >
+              {item.icon && <item.icon />}
+              <span>{item.title}</span>
+            </Link>
+          )}
         </Component>
       </ItemWrapper>
     )
@@ -71,7 +99,7 @@ function NavItem({ item, level = 0 }: { item: NavItem, level?: number }) {
       >
         <SidebarMenuItem>
           <CollapsibleTrigger asChild>
-            <SidebarMenuButton tooltip={item.title} isActive={item.isActive}>
+            <SidebarMenuButton tooltip={item.tooltipOverride || item.title} isActive={item.isActive}>
               {item.icon && <item.icon />}
               <span>{item.title}</span>
               <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
@@ -124,12 +152,21 @@ export function NavMain({
   items: NavItem[]
   label?: string
 }) {
+  const [openItem, setOpenItem] = React.useState<string | null>(
+    items.find((item) => item.isActive || item.items?.some(sub => sub.isActive))?.title || null
+  )
+
   return (
     <SidebarGroup>
       {label && <SidebarGroupLabel>{label}</SidebarGroupLabel>}
       <SidebarMenu>
         {items.map((item) => (
-          <NavItem key={item.title} item={item} />
+          <NavItem 
+            key={item.title} 
+            item={item} 
+            isOpen={openItem === item.title}
+            onOpenChange={(isOpen) => setOpenItem(isOpen ? item.title : null)}
+          />
         ))}
       </SidebarMenu>
     </SidebarGroup>

@@ -2,8 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { completeRegistration } from "@/app/actions/user-actions";
-import LoadingView from "@/components/loading-view";
-import { MiniLoader } from "@/components/mini-loader";
+import { LoadingSpinner } from "@/components/loading-view";
 import { toast } from "sonner";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -71,7 +70,7 @@ export default function CompleteRegistration() {
         <div className="relative min-h-[100dvh]">
             <Toaster />
             <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
-                <MiniLoader />
+                <LoadingSpinner size="md" />
             </div>
             <div className="absolute inset-0 z-[10000] flex flex-col items-center justify-center p-6 bg-transparent pointer-events-none">
                 <div className="w-full max-w-sm flex flex-col items-center text-center space-y-4">

@@ -101,6 +101,14 @@ export default function ProfileView() {
         contact_mode_pref: "",
         acknowledgement: false,
     });
+    
+    // Country Selection States
+    const [countries, setCountries] = useState<string[]>([]);
+    const [states, setStates] = useState<string[]>([]);
+    const [cities, setCities] = useState<string[]>([]);
+    const [loadingCountries, setLoadingCountries] = useState(false);
+    const [loadingStates, setLoadingStates] = useState(false);
+    const [loadingCities, setLoadingCities] = useState(false);
 
     const [selectedPrimarySubSkills, setSelectedPrimarySubSkills] = useState<string[]>([]);
     const [selectedSecondarySubSkills, setSelectedSecondarySubSkills] = useState<string[]>([]);
@@ -177,6 +185,82 @@ export default function ProfileView() {
         });
     }, [user]);
 
+    // -- Fetch Country/State/City Data --
+    useEffect(() => {
+        const loadCountries = async () => {
+            setLoadingCountries(true);
+            try {
+                const res = await fetch("https://countriesnow.space/api/v0.1/countries");
+                const data = await res.json();
+                const list = data.data.map((c: any) => c.country).sort();
+                setCountries(list);
+            } catch (err) {
+                console.error("Failed to fetch countries", err);
+            } finally {
+                setLoadingCountries(false);
+            }
+        };
+        loadCountries();
+    }, []);
+
+    useEffect(() => {
+        if (!formData.country) {
+            setStates([]);
+            return;
+        }
+        const loadStates = async () => {
+            setLoadingStates(true);
+            try {
+                const res = await fetch("https://countriesnow.space/api/v0.1/countries/states", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ country: formData.country }),
+                });
+                const data = await res.json();
+                if (data.data?.states) {
+                    setStates(data.data.states.map((s: any) => s.name).sort());
+                } else {
+                    setStates([]);
+                }
+            } catch (err) {
+                console.error("Failed to fetch states", err);
+                setStates([]);
+            } finally {
+                setLoadingStates(false);
+            }
+        };
+        loadStates();
+    }, [formData.country]);
+
+    useEffect(() => {
+        if (!formData.state || !formData.country) {
+            setCities([]);
+            return;
+        }
+        const loadCities = async () => {
+            setLoadingCities(true);
+            try {
+                const res = await fetch("https://countriesnow.space/api/v0.1/countries/state/cities", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ country: formData.country, state: formData.state }),
+                });
+                const data = await res.json();
+                if (data.data) {
+                    setCities(data.data.sort());
+                } else {
+                    setCities([]);
+                }
+            } catch (err) {
+                console.error("Failed to fetch cities", err);
+                setCities([]);
+            } finally {
+                setLoadingCities(false);
+            }
+        };
+        loadCities();
+    }, [formData.state, formData.country]);
+
     if (isLoadingProfile) {
         return <LoadingView fullScreen={false} />;
     }
@@ -185,14 +269,14 @@ export default function ProfileView() {
 
     const handleSave = async () => {
         setIsSaving(true);
-        try {
+        
+        const savePromise = (async () => {
             if (user && formData.fullName !== user.fullName) {
                 const parts = formData.fullName.trim().split(" ");
                 const firstName = parts[0] || "";
                 const lastName = parts.slice(1).join(" ") || "";
                 const fullName = `${firstName} ${lastName}`.trim();
 
-                // Manually update via Supabase since UserContext doesn't have an 'update' method
                 const { createBrowserClient } = await import("@/lib/supabase");
                 const supabase = createBrowserClient();
                 await supabase.auth.updateUser({
@@ -231,10 +315,16 @@ export default function ProfileView() {
                 volunteer_mode: formData.volunteer_mode || null,
                 acknowledgement: formData.acknowledgement,
             });
+        })();
 
-            toast.success("Profile saved ✓");
-        } catch (error: any) {
-            toast.error(error.message || "Failed to save profile.");
+        toast.promise(savePromise, {
+            loading: "Saving changes...",
+            success: "Profile Updated Successfully",
+            error: (err) => err.message || "Failed to save profile.",
+        });
+
+        try {
+            await savePromise;
         } finally {
             setIsSaving(false);
         }
@@ -400,16 +490,62 @@ export default function ProfileView() {
                                     </div>
                                 )}
                                 <div className="space-y-2">
-                                    <Label>City</Label>
-                                    <Input value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
+                                    <Label>Country</Label>
+                                    <Select 
+                                        value={formData.country} 
+                                        onValueChange={(val) => setFormData({ ...formData, country: val, state: "", city: "" })}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder={loadingCountries ? "Loading countries..." : "Select Country"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {countries.map((c) => (
+                                                <SelectItem key={c} value={c}>{c}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>State</Label>
-                                    <Input value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} />
+                                    <Select 
+                                        value={formData.state} 
+                                        onValueChange={(val) => setFormData({ ...formData, state: val, city: "" })}
+                                        disabled={!formData.country || loadingStates}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder={loadingStates ? "Loading..." : "Select State"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {states.length > 0 ? (
+                                                states.map((s) => (
+                                                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                                                ))
+                                            ) : (
+                                                <SelectItem value="none" disabled>No states found</SelectItem>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Country</Label>
-                                    <Input value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} />
+                                    <Label>City</Label>
+                                    <Select 
+                                        value={formData.city} 
+                                        onValueChange={(val) => setFormData({ ...formData, city: val })}
+                                        disabled={!formData.state || loadingCities}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder={loadingCities ? "Loading..." : "Select City"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {cities.length > 0 ? (
+                                                cities.map((c) => (
+                                                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                                                ))
+                                            ) : (
+                                                <SelectItem value="none" disabled>No cities found</SelectItem>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">

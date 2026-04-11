@@ -146,15 +146,21 @@ export default function SkillsManagementView() {
         }
     };
 
-    const handleDeleteCategory = async (id: string) => {
-        if (!confirm("Delete this category? All linked subcategories will be lost.")) return;
-        try {
-            await deleteSkillCategory(id);
-            toast.success("Category deleted");
-            loadData();
-        } catch (error: any) {
-            toast.error(error.message || "Failed to delete category");
-        }
+    const handleDeleteCategory = (id: string) => {
+        toast("Delete this category? All linked subcategories will be lost.", {
+            action: {
+                label: "Delete",
+                onClick: async () => {
+                    try {
+                        await deleteSkillCategory(id);
+                        toast.success("Category deleted");
+                        loadData();
+                    } catch (error: any) {
+                        toast.error(error.message || "Failed to delete category");
+                    }
+                },
+            },
+        });
     };
 
     // --- Subcategory Handlers ---
@@ -183,15 +189,21 @@ export default function SkillsManagementView() {
         }
     };
 
-    const handleDeleteSubCat = async (id: string) => {
-        if (!confirm("Delete this sub-category?")) return;
-        try {
-            await deleteSkillSubcategory(id);
-            toast.success("Sub-category deleted");
-            loadData();
-        } catch (error: any) {
-            toast.error(error.message || "Failed to delete sub-category");
-        }
+    const handleDeleteSubCat = (id: string) => {
+        toast("Delete this sub-category?", {
+            action: {
+                label: "Delete",
+                onClick: async () => {
+                    try {
+                        await deleteSkillSubcategory(id);
+                        toast.success("Sub-category deleted");
+                        loadData();
+                    } catch (error: any) {
+                        toast.error(error.message || "Failed to delete sub-category");
+                    }
+                },
+            },
+        });
     };
 
     // --- Filtered Data ---

@@ -60,6 +60,7 @@ import { deleteUserAction, updateUserRoleAction, inviteUserAction, toggleVolunte
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { getDepartments, Department } from "@/app/actions/general-onboarding-actions";
+import { LoadingSpinner } from "@/components/loading-view";
 
 interface ReadUser {
     id: string;
@@ -243,16 +244,22 @@ export function UsersClient({ initialUsers, currentUserId, actorRole, actorDepar
     };
 
     const handleDelete = async (userId: string) => {
-        if (!confirm("Are you sure you want to completely remove this user?")) return;
-        setLoadingAction(userId);
-        const res = await deleteUserAction(userId);
-        if (res.success) {
-            toast.success("User deleted successfully!");
-            setUsers(users.filter((u) => u.id !== userId));
-        } else {
-            toast.error(res.error || "Failed to delete user");
-        }
-        setLoadingAction(null);
+        toast("Are you sure you want to completely remove this user?", {
+            action: {
+                label: "Delete",
+                onClick: async () => {
+                    setLoadingAction(userId);
+                    const res = await deleteUserAction(userId);
+                    if (res.success) {
+                        toast.success("User deleted successfully!");
+                        setUsers(users.filter((u) => u.id !== userId));
+                    } else {
+                        toast.error(res.error || "Failed to delete user");
+                    }
+                    setLoadingAction(null);
+                },
+            },
+        });
     };
 
     const handleRoleChange = async (userId: string, newRole: string) => {
@@ -379,7 +386,7 @@ export function UsersClient({ initialUsers, currentUserId, actorRole, actorDepar
                                 disabled={loadingAction?.startsWith('role-') || (["Program", "Operations"].includes(editRole) && selectedDepts.length === 0)}
                                 className="flex-1 bg-indigo-600 hover:bg-indigo-700"
                             >
-                                {loadingAction?.startsWith('role-') ? <i className="fa-solid fa-spinner fa-spin mr-2" /> : null}
+                                {loadingAction?.startsWith('role-') ? <LoadingSpinner size="sm" className="mr-2" /> : null}
                                 Save Changes
                             </Button>
                         </div>
@@ -565,7 +572,7 @@ export function UsersClient({ initialUsers, currentUserId, actorRole, actorDepar
                                 <div className="w-full flex justify-between gap-3">
                                     <Button variant="ghost" onClick={() => setIsInviteOpen(false)} className="flex-1">Cancel</Button>
                                     <Button onClick={handleInvite} disabled={loadingAction === "invite" || !inviteEmail} className="flex-1 bg-indigo-600 hover:bg-indigo-700">
-                                        {loadingAction === "invite" ? <i className="fa-solid fa-spinner fa-spin mr-2" /> : null}
+                                        {loadingAction === "invite" ? <LoadingSpinner size="sm" className="mr-2" /> : null}
                                         Send Invite
                                     </Button>
                                 </div>
@@ -637,7 +644,7 @@ export function UsersClient({ initialUsers, currentUserId, actorRole, actorDepar
                                                 <Button variant="ghost" className="h-9 w-9 p-0 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
                                                     <span className="sr-only">Open menu</span>
                                                     {loadingAction === `role-${user.id}` || loadingAction === user.id ? (
-                                                        <i className="fa-solid fa-spinner fa-spin" />
+                                                        <LoadingSpinner size="sm" />
                                                     ) : (
                                                         <MoreHorizontal className="h-4 w-4 text-slate-400" />
                                                     )}

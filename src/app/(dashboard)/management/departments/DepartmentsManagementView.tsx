@@ -50,14 +50,20 @@ export default function DepartmentsManagementView() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure? Any onboarding modules linked to this department will lose their association.")) return;
-        try {
-            await deleteDepartment(id);
-            toast.success("Department deleted");
-            loadData();
-        } catch (e: any) {
-            toast.error("Error deleting department", { description: e.message });
-        }
+        toast("Are you sure? Any onboarding modules linked to this department will lose their association.", {
+            action: {
+                label: "Delete",
+                onClick: async () => {
+                    try {
+                        await deleteDepartment(id);
+                        toast.success("Department deleted");
+                        loadData();
+                    } catch (e: any) {
+                        toast.error("Error deleting department", { description: e.message });
+                    }
+                },
+            },
+        });
     };
 
     const filteredDepartments = departments.filter(d =>

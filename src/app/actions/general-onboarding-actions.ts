@@ -331,3 +331,91 @@ export async function upsertUserTaskProgress(payload: Partial<TaskProgress>) {
     return data;
 }
 
+/**
+ * SETTINGS: GLOBAL ONBOARDING TOGGLE
+ */
+export async function getGlobalOnboardingEnabled(): Promise<boolean> {
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'global_onboarding_enabled')
+        .single();
+        
+    if (error) {
+        if (error.code === 'PGRST116' || error.code === '42P01') return true; // Default true if table/row missing
+        throw new Error(error.message);
+    }
+    return data.value === true;
+}
+
+export async function setGlobalOnboardingEnabled(enabled: boolean) {
+    const supabase = createAdminClient();
+    const { error } = await supabase
+        .from('system_settings')
+        .upsert({ key: 'global_onboarding_enabled', value: enabled });
+    if (error) throw new Error(error.message);
+    revalidatePath("/management/onboarding");
+    revalidatePath("/onboarding");
+}
+
+/**
+ * SETTINGS: PER-USER ONBOARDING STATUS
+ */
+export async function getVolunteersOnboardingStatus() {
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, onboarding_status, onboarding_completed, onboarding_percentage')
+        .order('full_name', { ascending: true });
+    if (error) throw new Error(error.message);
+    return data || [];
+}
+
+export async function updateVolunteerOnboardingStatus(profileId: string, status: 'default' | 'locked' | 'unlocked') {
+    const supabase = createAdminClient();
+    const { error } = await supabase
+        .from('profiles')
+        .update({ onboarding_status: status })
+        .eq('id', profileId);
+    if (error) throw new Error(error.message);
+    revalidatePath("/management/onboarding");
+    revalidatePath("/onboarding");
+}
+
+export async function isOnboardingLockedForUser(profileId: string): Promise<boolean> {
+    const supabase = await createServerClient();
+    
+    // 1. Check user override
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('onboarding_status, auth_user_id')
+        .eq('id', profileId)
+        .single();
+        
+    if (profile?.onboarding_status === 'locked') return true;
+    if (profile?.onboarding_status === 'unlocked') return false;
+    
+    // 2. Check if user has role-specific tasks (they should never be locked out if they have department tasks)
+    if (profile?.auth_user_id) {
+        const { data: { user } } = await supabase.auth.admin.getUserById(profile.auth_user_id);
+        const userDepts = (user?.app_metadata?.departments as string[]) || [];
+        
+        if (userDepts.length > 0) {
+            // Check if there are any specific modules for these departments
+            const { data: specificModules } = await supabase
+                .from('onboarding_modules')
+                .select('id')
+                .eq('type', 'Specific')
+                .in('department_id', (await supabase.from('departments').select('id').in('name', userDepts)).data?.map(d => d.id) || [])
+                .limit(1);
+                
+            if (specificModules && specificModules.length > 0) return false;
+        }
+    }
+
+    // 3. Fallback to global setting if status is 'default' or missing
+    const globalEnabled = await getGlobalOnboardingEnabled();
+    return !globalEnabled;
+}
+

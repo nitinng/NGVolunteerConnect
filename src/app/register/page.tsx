@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthFooter } from "@/components/auth-footer";
 import { MiniLoader } from "@/components/mini-loader";
+import { LoadingSpinner } from "@/components/loading-view";
 import {
     Select,
     SelectContent,
@@ -287,8 +288,7 @@ function RegistrationForm() {
                     })}
                 </div>
 
-                {/* Right Action (Branding Slider) */}
-                <div className="w-14 h-14">
+                <div className="w-14 h-14 flex items-center justify-center">
                     <MiniLoader />
                 </div>
             </div>
@@ -641,7 +641,7 @@ function RegistrationForm() {
                             >
                                 {loading ? (
                                     <div className="flex items-center gap-3">
-                                        <i className="fa-solid fa-spinner fa-spin"></i>
+                                        <LoadingSpinner size="sm" />
                                         <span className="text-sm">Processing...</span>
                                     </div>
                                 ) : !formData.inclusionAgreed ? (

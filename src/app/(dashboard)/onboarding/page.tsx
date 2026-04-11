@@ -8,7 +8,8 @@ import {
     getGeneralOnboardingModules, 
     getGeneralOnboardingTasks, 
     getAllContentBlocks, 
-    getUserTaskProgress 
+    getUserTaskProgress,
+    isOnboardingLockedForUser
 } from "@/app/actions/general-onboarding-actions"
 import { calculateProfileCompletion } from "@/lib/profile-utils"
 import { currentUser } from "@/lib/auth"
@@ -28,13 +29,14 @@ export default async function OnboardingPage() {
     const user = await currentUser();
     const publicMetadata = user?.publicMetadata || {};
 
-    const [profile, dbCategories, loadedModules, loadedTasks, loadedBlocks, loadedProgress] = await Promise.all([
+    const [profile, dbCategories, loadedModules, loadedTasks, loadedBlocks, loadedProgress, isLocked] = await Promise.all([
         getMyProfile(),
         getSkillCategories(),
         getGeneralOnboardingModules(),
         getGeneralOnboardingTasks(),
         getAllContentBlocks(),
-        getUserTaskProgress()
+        getUserTaskProgress(),
+        getMyProfile().then(p => p ? isOnboardingLockedForUser(p.id) : false)
     ]);
 
     const sortedModules = loadedModules.sort((a,b) => a.order_index - b.order_index);
@@ -92,6 +94,7 @@ export default async function OnboardingPage() {
             serverCompletedModules={completedModules}
             serverStats={stats}
             serverCompletion={completion}
+            isLocked={isLocked}
         />
     )
 }

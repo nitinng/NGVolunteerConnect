@@ -2,31 +2,36 @@
 
 import React, { useState, useEffect } from "react";
 
-export const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+export const LoadingSpinner = ({ size = "md", simple = false, className = "" }: { size?: "sm" | "md" | "lg", simple?: boolean, className?: string }) => {
   const [slideIndex, setSlideIndex] = useState(0);
   const [hasStarted, setHasStarted] = useState(false);
 
+  // If simple is not explicitly provided, make 'sm' simple by default
+  const isSimple = simple || size === "sm";
+
   useEffect(() => {
+    if (isSimple) return; // No need for sliding index if simple
     const timer = setInterval(() => {
       setSlideIndex((prev) => (prev + 1) % 5);
       setHasStarted(true);
     }, 750);
     return () => clearInterval(timer);
-  }, []);
+  }, [isSimple]);
 
   const sizeClasses = {
-    sm: "w-8 h-8 rounded-lg",
+    sm: "w-5 h-5",
     md: "w-16 h-16 rounded-2xl",
     lg: "w-24 h-24 rounded-3xl",
   };
 
   const iconSizeClasses = {
-    sm: "text-lg",
+    sm: "text-xs",
     md: "text-2xl",
     lg: "text-4xl",
   };
 
   const renderContent = () => {
+    if (isSimple) return null;
     switch (slideIndex) {
       case 0:
         return (
@@ -64,20 +69,25 @@ export const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) =
   };
 
   return (
-    <div className="relative">
+    <div className={`relative ${sizeClasses[size]} ${className}`}>
       {/* Spinning Rings */}
-      <div className={`absolute ${size === "sm" ? "-inset-1" : "-inset-4"} rounded-full border-2 ${size === "sm" ? "border-slate-200 dark:border-slate-800" : "border-4 border-slate-200 dark:border-slate-800"}`}></div>
-      <div className={`absolute ${size === "sm" ? "-inset-1" : "-inset-4"} rounded-full border-2 ${size === "sm" ? "border-t-transparent" : "border-4 border-t-transparent"} animate-spin transition-colors duration-500 ${slideIndex === 0 ? 'border-rose-500' :
-        slideIndex === 1 ? 'border-indigo-600' :
+      <div className={`absolute ${size === "sm" ? "-inset-[2px]" : "-inset-4"} rounded-full border-2 ${size === "sm" ? "border-slate-200/30 dark:border-slate-800/30" : "border-4 border-slate-200 dark:border-slate-800"}`}></div>
+      <div className={`absolute ${size === "sm" ? "-inset-[2px]" : "-inset-4"} rounded-full border-2 border-t-transparent animate-spin transition-colors duration-500 ${
+        isSimple ? 'border-primary' : (
+          slideIndex === 0 ? 'border-rose-500' :
+          slideIndex === 1 ? 'border-indigo-600' :
           slideIndex === 2 ? 'border-sky-500' :
-            slideIndex === 3 ? 'border-emerald-500' :
-              'border-amber-500'
-        }`}></div>
+          slideIndex === 3 ? 'border-emerald-500' :
+          'border-amber-500'
+        )
+      }`}></div>
 
       {/* Icon Slider Window */}
-      <div className={`${sizeClasses[size]} overflow-hidden shadow-2xl shadow-indigo-600/30 relative z-10 bg-white dark:bg-slate-900`}>
-        {renderContent()}
-      </div>
+      {!isSimple && (
+        <div className={`${sizeClasses[size]} overflow-hidden shadow-2xl shadow-indigo-600/30 relative z-10 bg-white dark:bg-slate-900`}>
+          {renderContent()}
+        </div>
+      )}
     </div>
   );
 }

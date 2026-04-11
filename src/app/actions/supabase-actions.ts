@@ -684,3 +684,436 @@ export async function getVolunteerImpactSummaries() {
     }
     return summaries;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUPPORT HUB
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Creates a new support ticket linked to the authenticated user's profile.
+ */
+export async function createTicket(params: {
+    title: string;
+    description: string;
+    category: string;
+    priority: string;
+}) {
+    const userId = await requireAuth();
+    const supabase = createAdminClient();
+
+    // 1. Get profile UUID
+    const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("auth_user_id", userId)
+        .single();
+
+    if (profileError || !profile) {
+        throw new Error("You must complete your profile sync before raising a ticket.");
+    }
+
+    // 2. Insert ticket
+    const { data, error } = await supabase
+        .from("tickets")
+        .insert({
+            title: params.title,
+            description: params.description,
+            category: params.category,
+            priority: params.priority,
+            created_by: profile.id,
+            status: "Open"
+        })
+        .select()
+        .single();
+
+    if (error) {
+        console.error("[createTicket] Supabase Error:", error);
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+/**
+ * Adds a new FAQ entry to the database.
+ */
+export async function createFAQ(params: { question: string; answer: string; orderIndex: number }) {
+    await requireAuth();
+    const supabase = createAdminClient();
+
+    const { data, error } = await supabase
+        .from("faqs")
+        .insert({
+            question: params.question,
+            answer: params.answer,
+            order_index: params.orderIndex,
+            is_published: true
+        })
+        .select()
+        .single();
+
+    if (error) {
+        console.error("[createFAQ] Supabase Error:", error);
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+/**
+ * Removes an FAQ entry.
+ */
+export async function deleteFAQ(id: string) {
+    await requireAuth();
+    const supabase = createAdminClient();
+
+    const { error } = await supabase.from("faqs").delete().eq("id", id);
+    if (error) {
+        console.error("[deleteFAQ] Supabase Error:", error);
+        throw new Error(error.message);
+    }
+    return true;
+}
+
+/**
+ * Adds a new entry to the contact directory.
+ */
+export async function createDirectoryNode(params: { type: string; title: string; value: string; icon: string; orderIndex: number }) {
+    await requireAuth();
+    const supabase = createAdminClient();
+
+    const { data, error } = await supabase
+        .from("contact_directory")
+        .insert({
+            type: params.type,
+            title: params.title,
+            value: params.value,
+            icon: params.icon,
+            order_index: params.orderIndex
+        })
+        .select()
+        .single();
+
+    if (error) {
+        console.error("[createDirectoryNode] Supabase Error:", error);
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+/**
+ * Removes a node from the directory.
+ */
+export async function deleteDirectoryNode(id: string) {
+    await requireAuth();
+    const supabase = createAdminClient();
+
+    const { error } = await supabase.from("contact_directory").delete().eq("id", id);
+    if (error) {
+        console.error("[deleteDirectoryNode] Supabase Error:", error);
+        throw new Error(error.message);
+    }
+    return true;
+}
+
+/**
+ * Staff-only: Update a ticket's status or assignment.
+ */
+export async function updateTicketInternal(ticketId: string, updates: any) {
+    await requireAuth();
+    const supabase = createAdminClient();
+
+    const { data, error } = await supabase
+        .from("tickets")
+        .update(updates)
+        .eq("id", ticketId)
+        .select()
+        .single();
+
+    if (error) {
+        console.error("[updateTicket] Supabase Error:", error);
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+/**
+ * Staff-only: Add a message to a ticket timeline.
+ */
+export async function addTicketResponse(params: { ticketId: string; authorName: string; content: string; authorRole?: string }) {
+    await requireAuth();
+    const supabase = createAdminClient();
+
+    const { data, error } = await supabase
+        .from("ticket_timeline")
+        .insert({
+            ticket_id: params.ticketId,
+            type: "message",
+            author_name: params.authorName,
+            author_role: params.authorRole || "Staff",
+            text_content: params.content
+        })
+        .select()
+        .single();
+
+    if (error) {
+        console.error("[addTicketResponse] Supabase Error:", error);
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+/**
+ * Fetches all FAQs.
+ */
+export async function getFAQs() {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+        .from("faqs")
+        .select("*")
+        .eq("is_published", true)
+        .order("order_index", { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return data;
+}
+
+/**
+ * Fetches all directory entries.
+ */
+export async function getDirectory() {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+        .from("contact_directory")
+        .select("*")
+        .order("order_index", { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return data;
+}
+
+/**
+ * Fetches ticketing dropdown configuration.
+ */
+export async function getTicketingConfig() {
+    const supabase = createAdminClient();
+    const { data: cats } = await supabase.from('ticket_categories').select('name').order('name');
+    const { data: pris } = await supabase.from('ticket_priorities').select('name').order('name');
+    
+    return {
+        categories: cats?.map(c => c.name) || [],
+        priorities: pris?.map(p => p.name) || []
+    };
+}
+
+/**
+ * Fetches tickets belonging to the authenticated volunteer.
+ */
+export async function getMyTickets() {
+    const userId = await requireAuth();
+    const supabase = createAdminClient();
+
+    const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("auth_user_id", userId)
+        .single();
+
+    if (!profile) return [];
+
+    const { data, error } = await supabase
+        .from("tickets")
+        .select("*")
+        .eq("created_by", profile.id)
+        .order("created_at", { ascending: false });
+
+    if (error) throw new Error(error.message);
+    return data;
+}
+
+/**
+ * Staff-only: Fetches ALL tickets with profile information.
+ */
+export async function getAllTickets() {
+    await requireAuth();
+    const supabase = createAdminClient();
+
+    const { data, error } = await supabase
+        .from("tickets")
+        .select("*, profiles(full_name, email)")
+        .order("created_at", { ascending: false });
+
+    if (error) throw new Error(error.message);
+    return data;
+}
+
+/**
+ * Fetches the timeline for a specific ticket.
+ */
+export async function getTicketTimeline(ticketId: string) {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+        .from("ticket_timeline")
+        .select("*")
+        .eq("ticket_id", ticketId)
+        .order("created_at", { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return data || [];
+}
+
+/**
+ * For the SETTINGS PAGE: lists all non-volunteer users from Supabase Auth.
+ */
+export async function getAllNonVolunteers() {
+    const supabase = createAdminClient();
+
+    const { data: { users }, error: authError } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+    if (authError) throw new Error(authError.message);
+
+    const staffAuthIds = users
+        .filter(u => u.app_metadata?.role && u.app_metadata.role !== "Volunteer")
+        .map(u => u.id);
+
+    if (staffAuthIds.length === 0) return [];
+
+    const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, auth_user_id")
+        .in("auth_user_id", staffAuthIds)
+        .order("full_name");
+
+    if (profilesError) throw new Error(profilesError.message);
+
+    return (profiles || []).map(p => {
+        const authUser = users.find(u => u.id === p.auth_user_id);
+        return { ...p, role: authUser?.app_metadata?.role || "Staff" };
+    });
+}
+
+/**
+ * For the MANAGE TICKET dropdown: returns only curated assignees from ticket_assignees table.
+ */
+export async function getEligibleStaff() {
+    const supabase = createAdminClient();
+
+    const { data: assignees, error: assigneesError } = await supabase
+        .from("ticket_assignees")
+        .select("profile_id, profiles(id, full_name, email)")
+        .order("created_at");
+
+    if (assigneesError) throw new Error(assigneesError.message);
+
+    return (assignees || []).map((row: any) => row.profiles).filter(Boolean);
+}
+
+/**
+ * Adds a user to the curated ticket assignees list.
+ */
+export async function addTicketAssignee(profileId: string) {
+    await requireAuth();
+    const supabase = createAdminClient();
+
+    const { error } = await supabase
+        .from("ticket_assignees")
+        .insert({ profile_id: profileId });
+
+    if (error && error.code !== "23505") throw new Error(error.message); // ignore duplicate
+    return true;
+}
+
+/**
+ * Removes a user from the curated ticket assignees list.
+ */
+export async function removeTicketAssignee(profileId: string) {
+    await requireAuth();
+    const supabase = createAdminClient();
+
+    const { error } = await supabase
+        .from("ticket_assignees")
+        .delete()
+        .eq("profile_id", profileId);
+
+    if (error) throw new Error(error.message);
+    return true;
+}
+
+/**
+ * Full update for a ticket including metadata and timeline log.
+ */
+export async function updateTicketFull(ticketId: string, updates: any, authorName: string) {
+    const supabase = createAdminClient();
+    
+    // 0. Fetch old ticket for delta
+    const { data: oldTicket } = await supabase.from('tickets').select('*').eq('id', ticketId).single();
+
+    // 1. Update the ticket
+    const { data: ticket, error: ticketError } = await supabase
+        .from("tickets")
+        .update(updates)
+        .eq("id", ticketId)
+        .select()
+        .single();
+
+    if (ticketError) throw new Error(ticketError.message);
+
+    // 2. Add specific timeline entries if needed
+    if (oldTicket) {
+        const events = [];
+        
+        if (oldTicket.status !== updates.status) {
+            events.push({
+                ticket_id: ticketId,
+                type: "status",
+                author_name: authorName,
+                author_role: "Staff",
+                text_content: `changed status from ${oldTicket.status} to ${updates.status}`
+            });
+        }
+        
+        if (oldTicket.priority !== updates.priority) {
+            events.push({
+                ticket_id: ticketId,
+                type: "assignment",
+                author_name: authorName,
+                author_role: "Staff",
+                text_content: `changed priority from ${oldTicket.priority || 'N/A'} to ${updates.priority}`
+            });
+        }
+
+        const oldAssigned = oldTicket.assigned_users || [];
+        const newAssigned = updates.assigned_users || [];
+        if (oldAssigned.length !== newAssigned.length || !oldAssigned.every((u: string) => newAssigned.includes(u))) {
+            // Resolve UUIDs to names
+            let assigneeNames = "no one";
+            if (newAssigned.length > 0) {
+                const { data: profiles } = await supabase
+                    .from("profiles")
+                    .select("full_name")
+                    .in("id", newAssigned);
+                if (profiles && profiles.length > 0) {
+                    assigneeNames = profiles.map((p: any) => p.full_name).join(", ");
+                }
+            }
+
+            events.push({
+                ticket_id: ticketId,
+                type: "assignment",
+                author_name: authorName,
+                author_role: "Staff",
+                text_content: newAssigned.length > 0
+                    ? `assigned this ticket to ${assigneeNames}`
+                    : `cleared all assignments`
+            });
+        }
+
+        if (events.length > 0) {
+            await supabase.from('ticket_timeline').insert(events);
+        }
+    }
+
+    return ticket;
+}

@@ -11,6 +11,7 @@ export interface UserData {
     lastName: string;
     role?: string;
     volunteerEnabled?: boolean;
+    isOnboardingLocked?: boolean;
     publicMetadata?: any;
 }
 

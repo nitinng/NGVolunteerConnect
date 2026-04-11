@@ -15,8 +15,9 @@ export type GeneralModule = {
     icon: string;
     color: string;
     order_index: number;
-    type: 'General' | 'Specific';
+    type: 'General' | 'Specific' | 'Project';
     department_id: string | null;
+    project_id: string | null;
     created_at?: string;
     updated_at?: string;
 };
@@ -95,33 +96,72 @@ export async function deleteDepartment(id: string) {
     revalidatePath("/management/onboarding");
 }
 
-export async function getGeneralOnboardingModules(): Promise<GeneralModule[]> {
+export async function getGeneralOnboardingModules(projectId?: string): Promise<GeneralModule[]> {
     const supabase = await createServerClient();
-    const { data, error } = await supabase.from('onboarding_modules').select('*').order('order_index', { ascending: true });
+    let query = supabase.from('onboarding_modules').select('*').order('order_index', { ascending: true });
+    
+    if (projectId) {
+        query = query.eq('project_id', projectId);
+    } else {
+        // Only return non-project modules (General or Departmental) when no projectId is provided
+        query = query.is('project_id', null);
+    }
+
+    const { data, error } = await query;
     
     // For now, fail gracefully if table doesn't exist yet (before user runs the SQL)
     if (error && error.code === '42P01') return [];
     if (error) throw new Error(error.message);
     
-    return data || [];
+    return (data || []) as GeneralModule[];
 }
 
-export async function getGeneralOnboardingTasks(): Promise<GeneralTask[]> {
+export async function getOnboardingTasksByModule(moduleId: string): Promise<GeneralTask[]> {
     const supabase = await createServerClient();
-    const { data, error } = await supabase.from('onboarding_tasks').select('*').order('order_index', { ascending: true });
+    const { data, error } = await supabase.from('onboarding_tasks')
+        .select('*')
+        .eq('module_id', moduleId)
+        .order('order_index', { ascending: true });
     
     if (error && error.code === '42P01') return [];
     if (error) throw new Error(error.message);
     
-    return data || [];
+    return (data || []) as GeneralTask[];
+}
+
+export async function getGeneralOnboardingTasks(projectId?: string): Promise<GeneralTask[]> {
+    const supabase = await createServerClient();
+    
+    // If projectId is provided, we fetch tasks for modules belonging to that project
+    // Otherwise, we fetch tasks for general/departmental modules
+    let query = supabase.from('onboarding_tasks').select('*, onboarding_modules!inner(project_id)');
+    
+    if (projectId) {
+        query = query.eq('onboarding_modules.project_id', projectId);
+    } else {
+        query = query.is('onboarding_modules.project_id', null);
+    }
+    
+    const { data, error } = await query.order('order_index', { ascending: true });
+    
+    if (error && error.code === '42P01') return [];
+    if (error) throw new Error(error.message);
+    
+    return (data || []) as GeneralTask[];
 }
 
 export async function upsertModule(payload: Partial<GeneralModule>) {
     const supabase = createAdminClient();
     const { data, error } = await supabase.from('onboarding_modules').upsert(payload).select().single();
     if (error) throw new Error(error.message);
+    
     revalidatePath("/management/onboarding");
     revalidatePath("/onboarding");
+    if (payload.project_id) {
+        revalidatePath(`/management/projects/${payload.project_id}`);
+        revalidatePath(`/projects/${payload.project_id}`);
+        revalidatePath(`/projects/${payload.project_id}/onboarding`);
+    }
     return data;
 }
 
@@ -159,8 +199,17 @@ export async function upsertTask(payload: Partial<GeneralTask>) {
     const supabase = createAdminClient();
     const { data, error } = await supabase.from('onboarding_tasks').upsert(payload).select().single();
     if (error) throw new Error(error.message);
+    
     revalidatePath("/management/onboarding");
     revalidatePath("/onboarding");
+    
+    // We might need to find the moduleId's projectId to revalidate project paths
+    const { data: mod } = await supabase.from('onboarding_modules').select('project_id').eq('id', payload.module_id || '').single();
+    if (mod?.project_id) {
+        revalidatePath(`/management/projects/${mod.project_id}`);
+        revalidatePath(`/projects/${mod.project_id}/onboarding`);
+    }
+    
     return data;
 }
 
@@ -300,18 +349,20 @@ export async function upsertUserTaskProgress(payload: Partial<TaskProgress>) {
     
     if (error) throw new Error(error.message);
 
-    // RECALCULATE AGGREGATE PERCENTAGE
-    // 1. Get total tasks
+    // RECALCULATE AGGREGATE PERCENTAGE (General tasks only)
+    // 1. Get total general tasks
     const { count: totalTasks } = await adminSupabase
         .from('onboarding_tasks')
-        .select('*', { count: 'exact', head: true });
+        .select('*, onboarding_modules!inner(project_id)', { count: 'exact', head: true })
+        .is('onboarding_modules.project_id', null);
 
-    // 2. Get completed tasks for this user
+    // 2. Get completed general tasks for this user
     const { count: completedTasks } = await adminSupabase
         .from('onboarding_task_progress')
-        .select('*', { count: 'exact', head: true })
+        .select('*, onboarding_tasks!inner(onboarding_modules!inner(project_id))', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .eq('is_completed', true);
+        .eq('is_completed', true)
+        .is('onboarding_tasks.onboarding_modules.project_id', null);
 
     const percentage = totalTasks && totalTasks > 0 
         ? Math.round(((completedTasks || 0) / totalTasks) * 100) 

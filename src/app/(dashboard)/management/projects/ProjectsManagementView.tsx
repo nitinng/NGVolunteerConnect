@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Briefcase, Plus, Users, Search, Edit2, Trash2, Settings } from "lucide-react";
 import Link from "next/link";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useUserContext } from "@/contexts/user-context";
 
 export default function ProjectsManagementView() {
     const [projects, setProjects] = useState<any[]>([]);
@@ -26,6 +27,8 @@ export default function ProjectsManagementView() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [editingProject, setEditingProject] = useState<any | null>(null);
+    const user = useUserContext();
+    const isReadOnly = user?.role === "Operations";
 
     useEffect(() => {
         loadData();
@@ -104,12 +107,14 @@ export default function ProjectsManagementView() {
                             </p>
                         </div>
                     </div>
-                    <Button 
-                        className="w-fit gap-2 bg-indigo-600 hover:bg-indigo-700 text-white" 
-                        onClick={() => setEditingProject({ volunteers_needed: 1, status: "draft", impact_tier: "Community" })}
-                    >
-                        <Plus className="w-4 h-4" /> Add Project
-                    </Button>
+                    {!isReadOnly && (
+                        <Button 
+                            className="w-fit gap-2 bg-indigo-600 hover:bg-indigo-700 text-white" 
+                            onClick={() => setEditingProject({ volunteers_needed: 1, status: "draft", impact_tier: "Community" })}
+                        >
+                            <Plus className="w-4 h-4" /> Add Project
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -218,16 +223,20 @@ export default function ProjectsManagementView() {
                                     <TableCell className="text-right flex items-center justify-end gap-1 px-6">
                                         <Button variant="outline" size="sm" asChild className="gap-1 mr-2 bg-slate-50 text-slate-700 font-bold border-slate-200">
                                             <Link href={`/management/projects/${proj.id}`}>
-                                                <Settings className="w-3.5 h-3.5" />
-                                                Manage View
+                                                {isReadOnly ? <Search className="w-3.5 h-3.5" /> : <Settings className="w-3.5 h-3.5" />}
+                                                {isReadOnly ? "View Details" : "Manage View"}
                                             </Link>
                                         </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => setEditingProject({ ...proj, department_id: proj.department?.id })}>
-                                            <Edit2 className="w-4 h-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="text-rose-500 mb:text-rose-600" onClick={() => handleDelete(proj.id)}>
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
+                                        {!isReadOnly && (
+                                            <>
+                                                <Button variant="ghost" size="icon" onClick={() => setEditingProject({ ...proj, department_id: proj.department?.id })}>
+                                                    <Edit2 className="w-4 h-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="text-rose-500 mb:text-rose-600" onClick={() => handleDelete(proj.id)}>
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            </>
+                                        )}
                                     </TableCell>
                                 </TableRow>
                             ))

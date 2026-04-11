@@ -1,20 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getProjectById, getProjectOnboardingSteps, getVolunteerOnboardingProgress, upsertVolunteerOnboardingProgress, getMyApplications } from "@/app/actions/project-actions";
-import { Loader2, ArrowLeft, CheckCircle2, Circle, PartyPopper } from "lucide-react";
+import { getProjectById, getMyApplications } from "@/app/actions/project-actions";
+import { 
+    getGeneralOnboardingModules, 
+    getGeneralOnboardingTasks, 
+    getAllContentBlocks, 
+    getUserTaskProgress,
+    GeneralModule 
+} from "@/app/actions/general-onboarding-actions";
+import { Loader2, ArrowLeft, Target, Award, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { JourneyModuleCard } from "@/components/journey-module-card";
+import { slugify } from "@/lib/utils";
 
 export default function VolunteerProjectOnboardingView({ projectId }: { projectId: string }) {
     const [project, setProject] = useState<any>(null);
     const [application, setApplication] = useState<any>(null);
-    const [steps, setSteps] = useState<any[]>([]);
-    const [progress, setProgress] = useState<any[]>([]);
+    const [modules, setModules] = useState<GeneralModule[]>([]);
+    const [completedModules, setCompletedModules] = useState<string[]>([]);
+    const [stats, setStats] = useState({ totalPages: 0, completedPages: 0, percentage: 0 });
     const [isLoading, setIsLoading] = useState(true);
-    const [isUpdating, setIsUpdating] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -23,48 +33,73 @@ export default function VolunteerProjectOnboardingView({ projectId }: { projectI
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const [proj, apps, onboardingSteps] = await Promise.all([
+            const [proj, apps, loadedModules, loadedTasks, loadedBlocks, loadedProgress] = await Promise.all([
                 getProjectById(projectId),
                 getMyApplications(),
-                getProjectOnboardingSteps(projectId)
+                getGeneralOnboardingModules(projectId),
+                getGeneralOnboardingTasks(projectId),
+                getAllContentBlocks(),
+                getUserTaskProgress()
             ]);
             
             const app = apps.find(a => a.project_id === projectId && a.status === 'approved');
             setProject(proj);
             setApplication(app);
-            setSteps(onboardingSteps);
 
-            if (app) {
-                const prog = await getVolunteerOnboardingProgress(app.id);
-                setProgress(prog);
-            }
+            // Sort modules
+            const sortedModules = loadedModules.sort((a,b) => a.order_index - b.order_index);
+            setModules(sortedModules);
+
+            // Calculate progress (mirroring logic from general-onboarding-page)
+            let tPages = 0;
+            let cPages = 0;
+            const completed: string[] = [];
+
+            sortedModules.forEach(m => {
+                const mTasks = loadedTasks.filter(t => t.module_id === m.id);
+                let mTotal = 0;
+                let mComp = 0;
+
+                mTasks.forEach(t => {
+                    const tBlocks = loadedBlocks.filter(b => b.task_id === t.id).sort((a,b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+                    let pagesForTask = 0;
+                    if (tBlocks.length === 0) {
+                        pagesForTask = 1;
+                    } else {
+                        pagesForTask = 1; 
+                        tBlocks.forEach((tb, i) => { if (i > 0 && tb.page_behavior === 'new_page') pagesForTask++; });
+                    }
+                    mTotal += pagesForTask;
+                    tPages += pagesForTask;
+
+                    const prog = loadedProgress.find(p => p.task_id === t.id);
+                    if (prog) {
+                        if (prog.is_completed) {
+                            mComp += pagesForTask;
+                            cPages += pagesForTask;
+                        } else if (prog.completed_pages) {
+                            mComp += prog.completed_pages.length;
+                            cPages += prog.completed_pages.length;
+                        }
+                    }
+                });
+
+                if (mTotal > 0 && mComp >= mTotal) {
+                    completed.push(m.id);
+                }
+            });
+
+            setCompletedModules(completed);
+            setStats({
+                totalPages: tPages,
+                completedPages: cPages,
+                percentage: tPages > 0 ? Math.round((cPages / tPages) * 100) : 0
+            });
+
         } catch (error: any) {
-            toast.error("Failed to load onboarding", { description: error.message });
+            toast.error("Failed to load project onboarding", { description: error.message });
         } finally {
             setIsLoading(false);
-        }
-    };
-
-    const handleMarkComplete = async (stepId: string, currentStatus: boolean) => {
-        if (!application) return;
-        setIsUpdating(true);
-        try {
-            await upsertVolunteerOnboardingProgress(application.id, stepId, !currentStatus);
-            toast.success(!currentStatus ? "Step marked as complete!" : "Step marked as incomplete");
-            
-            // Optimistic update
-            setProgress(prev => {
-                const existing = prev.find(p => p.step_id === stepId);
-                if (existing) {
-                    return prev.map(p => p.step_id === stepId ? { ...p, completed: !currentStatus } : p);
-                }
-                return [...prev, { step_id: stepId, completed: !currentStatus }];
-            });
-            
-        } catch (e: any) {
-            toast.error("Error updating progress", { description: e.message });
-        } finally {
-            setIsUpdating(false);
         }
     };
 
@@ -72,7 +107,7 @@ export default function VolunteerProjectOnboardingView({ projectId }: { projectI
         return (
             <div className="flex flex-col items-center justify-center p-12 min-h-[50vh]">
                 <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-4" />
-                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Loading onboarding...</p>
+                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Loading project modules...</p>
             </div>
         );
     }
@@ -87,87 +122,78 @@ export default function VolunteerProjectOnboardingView({ projectId }: { projectI
         );
     }
 
-    const completedCount = progress.filter(p => p.completed).length;
-    const isFullyCompleted = steps.length > 0 && completedCount === steps.length;
-
     return (
-        <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8 max-w-4xl mx-auto w-full">
+        <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 max-w-7xl mx-auto w-full animate-in fade-in duration-500">
             <Link href="/projects" className="flex items-center text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors w-fit">
                 <ArrowLeft className="w-4 h-4 mr-1" /> Back to Projects
             </Link>
             
-            <div className="relative overflow-hidden rounded-lg bg-indigo-600 text-white p-6 shadow-sm">
-                <h1 className="text-2xl font-bold tracking-tight">Onboarding: {project.title}</h1>
-                <p className="text-indigo-100 mt-1 font-medium">Complete these steps to formally begin your contribution.</p>
+            {/* Header / Project Progress Card */}
+            <div className="relative overflow-hidden rounded-xl bg-indigo-600 text-white p-6 shadow-lg">
+                <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 scale-150">
+                    <Target className="w-32 h-32" />
+                </div>
                 
-                <div className="mt-6 bg-white/20 p-4 rounded-lg flex items-center justify-between">
-                    <span className="font-bold">Your Progress</span>
-                    <span className="font-black">{completedCount} / {steps.length} Steps</span>
+                <div className="relative flex flex-col md:flex-row justify-between gap-6">
+                    <div>
+                        <h1 className="text-3xl font-black tracking-tight">{project.title}</h1>
+                        <p className="text-indigo-100 mt-2 font-medium max-w-xl">
+                            Welcome to the team! Complete these onboarding modules to familiarize yourself with the project goals, tools, and workflows.
+                        </p>
+                    </div>
+                    
+                    <div className="bg-white/10 backdrop-blur-md rounded-xl p-5 border border-white/20 min-w-[240px]">
+                        <div className="flex justify-between text-xs font-black uppercase tracking-widest mb-2 opacity-80">
+                            <span>Project Progress</span>
+                            <span>{stats.percentage}%</span>
+                        </div>
+                        <Progress value={stats.percentage} className="h-2 bg-white/20" indicatorClassName="bg-white" />
+                        <div className="mt-4 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Award className="w-4 h-4" />
+                                <span className="text-sm font-bold">{completedModules.length} / {modules.length} Modules</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {isFullyCompleted && (
-                <Card className="border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-800/30">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="p-3 bg-emerald-100 text-emerald-600 dark:bg-emerald-800 dark:text-emerald-300 rounded-full">
-                            <PartyPopper className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-emerald-800 dark:text-emerald-300 text-lg">You are all set!</h3>
-                            <p className="text-emerald-600 dark:text-emerald-400 text-sm">You have completed all project requirements. Connect with your PM to get started!</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            <div className="space-y-4">
-                {steps.map((step, index) => {
-                    const isCompleted = progress.find(p => p.step_id === step.id)?.completed || false;
-                    
-                    return (
-                        <Card key={step.id} className={`transition-all ${isCompleted ? 'border-emerald-200 bg-slate-50/50' : 'border-slate-200 hover:border-indigo-200'}`}>
-                            <CardContent className="p-5 flex flex-col md:flex-row gap-5 items-start">
-                                <div className="mt-1">
-                                    <button 
-                                        onClick={() => handleMarkComplete(step.id, isCompleted)}
-                                        disabled={isUpdating}
-                                        className="focus:outline-none disabled:opacity-50"
-                                    >
-                                        {isCompleted ? (
-                                            <CheckCircle2 className="w-7 h-7 text-emerald-500" />
-                                        ) : (
-                                            <Circle className="w-7 h-7 text-slate-300 hover:text-indigo-400 transition-colors" />
-                                        )}
-                                    </button>
-                                </div>
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest">Step {index + 1}</span>
-                                        <span className="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-500 uppercase font-semibold">{step.type}</span>
-                                    </div>
-                                    <h3 className={`text-lg font-bold ${isCompleted ? 'text-slate-500 line-through' : 'text-slate-900 dark:text-slate-100'}`}>
-                                        {step.title}
-                                    </h3>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
-                                        {step.description}
-                                    </p>
-                                </div>
-                                {!isCompleted && step.type === 'form' && (
-                                    <Button variant="outline" className="w-full md:w-auto shrink-0 font-bold text-indigo-600 border-indigo-200 hover:bg-indigo-50">
-                                        Fill Form
-                                    </Button>
-                                )}
-                            </CardContent>
-                        </Card>
-                    );
-                })}
-
-                {steps.length === 0 && (
-                     <div className="py-12 border-2 border-dashed rounded-xl text-center bg-slate-50">
-                        <p className="text-slate-500 font-medium">No strict onboarding steps required. You're ready to go!</p>
-                    </div>
-                )}
+            <div className="flex items-center gap-2 mt-4 px-1">
+                <Compass className="w-5 h-5 text-indigo-500" />
+                <h2 className="text-xl font-bold tracking-tight text-slate-800 dark:text-slate-200">
+                    Onboarding Journey
+                </h2>
             </div>
+
+            {modules.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-12">
+                    {modules.map((mod, idx) => {
+                        const isCompleted = completedModules.includes(mod.id);
+                        // Unlocked if first module or previous module is completed
+                        const isUnlocked = idx === 0 || completedModules.includes(modules[idx - 1].id);
+
+                        return (
+                            <JourneyModuleCard 
+                                key={mod.id}
+                                mod={mod}
+                                isCompleted={isCompleted}
+                                isUnlocked={isUnlocked}
+                                href={`/projects/${projectId}/onboarding/tasks/${slugify(mod.title)}`}
+                            />
+                        );
+                    })}
+                </div>
+            ) : (
+                <div className="py-20 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-slate-50/50 text-center">
+                    <div className="p-4 rounded-full bg-slate-100 text-slate-400 mb-4">
+                        <Target className="w-10 h-10" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-700">No modular onboarding assigned</h3>
+                    <p className="text-slate-500 max-w-sm mx-auto mt-2">
+                        The project leads haven't configured modular onboarding for this project yet. Please check back later or contact your program manager.
+                    </p>
+                </div>
+            )}
         </div>
     );
 }

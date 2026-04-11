@@ -261,3 +261,25 @@ export async function upsertVolunteerOnboardingProgress(applicationId: string, s
     revalidatePath("/projects");
     return data;
 }
+export async function manualAssignVolunteer(projectId: string, profileId: string) {
+    const adminSupabase = createAdminClient();
+    
+    // Create an approved application directly
+    const { data, error } = await adminSupabase
+        .from("volunteer_applications")
+        .upsert({
+            project_id: projectId,
+            profile_id: profileId,
+            status: "approved",
+            reviewed_at: new Date().toISOString(),
+            reviewed_by: "Manual Assignment"
+        }, { onConflict: "project_id, profile_id" })
+        .select()
+        .single();
+
+    if (error) throw new Error(error.message);
+    
+    revalidatePath("/projects");
+    revalidatePath("/management/projects");
+    return data;
+}

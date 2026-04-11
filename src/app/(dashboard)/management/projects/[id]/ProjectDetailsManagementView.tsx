@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getProjectById, getApplicationsForProject, updateApplicationStatus, getProjectOnboardingSteps, upsertProjectOnboardingStep, deleteProjectOnboardingStep } from "@/app/actions/project-actions";
+import { getProjectById, getApplicationsForProject, updateApplicationStatus, manualAssignVolunteer } from "@/app/actions/project-actions";
+import { getAllProfiles } from "@/app/actions/supabase-actions";
 import { Loader2, ArrowLeft, Settings, Users, BookOpenCheck, CheckCircle2, XCircle, Plus, Trash2 } from "lucide-react";
+import OnboardingFlowBuilder from "@/components/onboarding-flow-builder";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,14 +13,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useUserContext } from "@/contexts/user-context";
 
 export default function ProjectDetailsManagementView({ projectId }: { projectId: string }) {
     const [project, setProject] = useState<any>(null);
     const [applications, setApplications] = useState<any[]>([]);
-    const [onboardingSteps, setOnboardingSteps] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("applications");
-    const [editingStep, setEditingStep] = useState<any>(null);
+    
+    const [allProfiles, setAllProfiles] = useState<any[]>([]);
+    const [assignSearch, setAssignSearch] = useState("");
+    const [isAssigning, setIsAssigning] = useState(false);
+    const user = useUserContext();
+    const isReadOnly = user?.role === "Operations";
 
     useEffect(() => {
         loadData();
@@ -27,14 +34,14 @@ export default function ProjectDetailsManagementView({ projectId }: { projectId:
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const [proj, apps, steps] = await Promise.all([
+            const [proj, apps, profiles] = await Promise.all([
                 getProjectById(projectId),
                 getApplicationsForProject(projectId),
-                getProjectOnboardingSteps(projectId)
+                getAllProfiles()
             ]);
             setProject(proj);
             setApplications(apps);
-            setOnboardingSteps(steps);
+            setAllProfiles(profiles || []);
         } catch (error: any) {
             toast.error("Failed to load project details", { description: error.message });
         } finally {
@@ -57,36 +64,18 @@ export default function ProjectDetailsManagementView({ projectId }: { projectId:
         }
     };
 
-    const handleSaveStep = async () => {
-        if (!editingStep?.title) return toast.error("Title is required");
+    const handleManualAssign = async (profileId: string) => {
+        setIsAssigning(true);
         try {
-            await upsertProjectOnboardingStep({
-                ...editingStep,
-                project_id: projectId
-            });
-            toast.success("Step saved successfully");
-            setEditingStep(null);
+            await manualAssignVolunteer(projectId, profileId);
+            toast.success("Volunteer assigned successfully");
+            setAssignSearch("");
             loadData();
         } catch (e: any) {
-            toast.error("Failed to save step", { description: e.message });
+            toast.error("Failed to assign", { description: e.message });
+        } finally {
+            setIsAssigning(false);
         }
-    };
-
-    const handleDeleteStep = async (id: string) => {
-        toast("Delete onboarding step?", {
-            action: {
-                label: "Delete",
-                onClick: async () => {
-                    try {
-                        await deleteProjectOnboardingStep(id);
-                        toast.success("Step deleted");
-                        loadData();
-                    } catch (e: any) {
-                        toast.error("Error", { description: e.message });
-                    }
-                }
-            }
-        });
     };
 
     if (isLoading) {
@@ -137,19 +126,65 @@ export default function ProjectDetailsManagementView({ projectId }: { projectId:
                 </TabsList>
 
                 <TabsContent value="applications" className="focus-visible:outline-none">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <Card className="border-indigo-100 bg-white shadow-sm">
-                            <CardHeader className="py-4"><CardTitle className="text-sm font-medium text-slate-500">Total Applications</CardTitle></CardHeader>
-                            <CardContent><p className="text-3xl font-black text-slate-800">{applications.length}</p></CardContent>
-                        </Card>
-                        <Card className="border-emerald-100 bg-white shadow-sm">
-                            <CardHeader className="py-4"><CardTitle className="text-sm font-medium text-slate-500">Approved Volunteers</CardTitle></CardHeader>
-                            <CardContent><p className="text-3xl font-black text-emerald-600">{approved.length} <span className="text-sm text-slate-400 font-normal">/ {project.volunteers_needed} needed</span></p></CardContent>
-                        </Card>
-                        <Card className="border-amber-100 bg-white shadow-sm">
-                            <CardHeader className="py-4"><CardTitle className="text-sm font-medium text-slate-500">Pending Review</CardTitle></CardHeader>
-                            <CardContent><p className="text-3xl font-black text-amber-600">{pending.length}</p></CardContent>
-                        </Card>
+                    <div className="flex flex-col md:flex-row gap-6 items-start mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 w-full">
+                            <Card className="border-indigo-100 bg-white shadow-sm">
+                                <CardHeader className="py-4"><CardTitle className="text-sm font-medium text-slate-500">Total Applications</CardTitle></CardHeader>
+                                <CardContent><p className="text-3xl font-black text-slate-800">{applications.length}</p></CardContent>
+                            </Card>
+                            <Card className="border-emerald-100 bg-white shadow-sm">
+                                <CardHeader className="py-4"><CardTitle className="text-sm font-medium text-slate-500">Approved Volunteers</CardTitle></CardHeader>
+                                <CardContent><p className="text-3xl font-black text-emerald-600">{approved.length} <span className="text-sm text-slate-400 font-normal">/ {project.volunteers_needed} needed</span></p></CardContent>
+                            </Card>
+                            <Card className="border-amber-100 bg-white shadow-sm">
+                                <CardHeader className="py-4"><CardTitle className="text-sm font-medium text-slate-500">Pending Review</CardTitle></CardHeader>
+                                <CardContent><p className="text-3xl font-black text-amber-600">{pending.length}</p></CardContent>
+                            </Card>
+                        </div>
+                        
+                        {!isReadOnly && (
+                            <Card className="w-full md:w-80 shrink-0 border-indigo-200 bg-indigo-50/20">
+                                <CardHeader className="py-3 px-4">
+                                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-indigo-700">Manual Assign</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-3 pt-0">
+                                    <div className="space-y-2">
+                                        <Input 
+                                            placeholder="Search volunteer..." 
+                                            className="h-8 text-xs bg-white" 
+                                            value={assignSearch}
+                                            onChange={e => setAssignSearch(e.target.value)}
+                                        />
+                                        {assignSearch.length > 2 && (
+                                            <div className="border rounded bg-white max-h-40 overflow-y-auto shadow-lg">
+                                                {allProfiles
+                                                    .filter(p => !p.role || p.role === 'Volunteer') // Only assign volunteers
+                                                    .filter(p => p.full_name.toLowerCase().includes(assignSearch.toLowerCase()) || (p.email && p.email.toLowerCase().includes(assignSearch.toLowerCase())))
+                                                    .map(p => (
+                                                        <button
+                                                            key={p.id}
+                                                            disabled={isAssigning || applications.some(a => a.profile_id === p.id)}
+                                                            onClick={() => handleManualAssign(p.id)}
+                                                            className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 border-b flex justify-between items-center group"
+                                                        >
+                                                            <div className="truncate pr-2">
+                                                                <div className="font-bold">{p.full_name}</div>
+                                                                <div className="text-slate-400">{p.email}</div>
+                                                            </div>
+                                                            {applications.some(a => a.profile_id === p.id) ? (
+                                                                <span className="text-emerald-500 font-bold shrink-0">Assigned</span>
+                                                            ) : (
+                                                                <Plus className="w-3.5 h-3.5 text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                            )}
+                                                        </button>
+                                                    ))
+                                                }
+                                            </div>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
 
                     <div className="border rounded-md bg-white dark:bg-zinc-950 shadow-sm overflow-hidden line-clamp-none">
@@ -179,7 +214,7 @@ export default function ProjectDetailsManagementView({ projectId }: { projectId:
                                             </span>
                                         </TableCell>
                                         <TableCell className="text-right px-6">
-                                            {app.status === 'pending' && (
+                                            {app.status === 'pending' && !isReadOnly && (
                                                 <div className="flex items-center justify-end gap-2">
                                                     <Button size="sm" onClick={() => handleUpdateStatus(app.id, 'approved')} className="bg-emerald-600 hover:bg-emerald-700">Approve</Button>
                                                     <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(app.id, 'rejected', true)} className="border-rose-200 text-rose-600 hover:bg-rose-50">Reject</Button>
@@ -198,73 +233,11 @@ export default function ProjectDetailsManagementView({ projectId }: { projectId:
                 </TabsContent>
 
                 <TabsContent value="onboarding" className="focus-visible:outline-none">
-                     <div className="flex justify-between items-center mb-6 border-b pb-4">
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-900">Project Onboarding Flow</h3>
-                            <p className="text-sm text-slate-500">These steps will be required for approved volunteers.</p>
-                        </div>
-                        <Button className="bg-indigo-600 font-bold" onClick={() => setEditingStep({ type: 'info', step_order: onboardingSteps.length + 1 })}>
-                            <Plus className="w-4 h-4 mr-2" /> Add Step
-                        </Button>
-                    </div>
-
-                    {editingStep && (
-                        <Card className="mb-6 border-indigo-200 bg-indigo-50/10">
-                            <CardHeader>
-                                <CardTitle>{editingStep.id ? "Edit Step" : "New Onboarding Step"}</CardTitle>
-                            </CardHeader>
-                            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-slate-700">Step Title</label>
-                                    <Input value={editingStep.title || ''} onChange={e => setEditingStep({ ...editingStep, title: e.target.value })} />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-slate-700">Type</label>
-                                    <select 
-                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 shadow-sm"
-                                        value={editingStep.type || 'info'}
-                                        onChange={e => setEditingStep({ ...editingStep, type: e.target.value })}
-                                    >
-                                        <option value="info">Information Only</option>
-                                        <option value="checkbox">Checkbox Acknowledgement</option>
-                                        <option value="form">Data Collection (Form)</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-2 md:col-span-2">
-                                    <label className="text-xs font-bold text-slate-700">Description (Instructions)</label>
-                                    <Textarea value={editingStep.description || ''} onChange={e => setEditingStep({ ...editingStep, description: e.target.value })} rows={3} />
-                                </div>
-                            </CardContent>
-                            <CardFooter className="gap-2">
-                                <Button onClick={handleSaveStep} className="bg-indigo-600">Save Step</Button>
-                                <Button variant="ghost" onClick={() => setEditingStep(null)}>Cancel</Button>
-                            </CardFooter>
-                        </Card>
-                    )}
-
-                    <div className="space-y-3">
-                        {onboardingSteps.map((step, idx) => (
-                            <div key={step.id} className="flex gap-4 p-4 border rounded-xl bg-white shadow-sm hover:border-indigo-200 transition-colors">
-                                <div className="flex items-center justify-center w-8 h-8 rounded bg-slate-100 font-black text-slate-500 shrink-0">
-                                    {idx + 1}
-                                </div>
-                                <div className="flex-1">
-                                    <h4 className="font-bold text-slate-900">{step.title}</h4>
-                                    <p className="text-sm text-slate-600 mt-1">{step.description}</p>
-                                    <span className="inline-block mt-2 text-xs font-bold bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded uppercase tracking-wider">{step.type}</span>
-                                </div>
-                                <div className="flex items-start gap-1">
-                                    <Button variant="ghost" size="icon" onClick={() => setEditingStep(step)}><Settings className="w-4 h-4" /></Button>
-                                    <Button variant="ghost" size="icon" className="text-rose-500" onClick={() => handleDeleteStep(step.id)}><Trash2 className="w-4 h-4" /></Button>
-                                </div>
-                            </div>
-                        ))}
-                        {onboardingSteps.length === 0 && (
-                            <div className="py-12 border-2 border-dashed rounded-xl text-center">
-                                <p className="text-slate-500 font-medium">No onboarding steps defined for this project.</p>
-                            </div>
-                        )}
-                    </div>
+                    <OnboardingFlowBuilder 
+                        projectId={projectId} 
+                        title="Project Onboarding Flow" 
+                        description={`Manage the modular onboarding flow for ${project.title}. Volunteers will need to complete these tasks once approved.`} 
+                    />
                 </TabsContent>
             </Tabs>
         </div>

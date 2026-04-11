@@ -74,9 +74,13 @@ export function AppSidebar({ role, devOverride, isLocked, ...props }: React.Comp
     });
   }
 
-  // Everyone (except Operations which already gets full dashboard) gets a Projects view
+  // Role-specific Projects View labels for the general section
+  const projectLabel = activeRole === 'Admin' ? 'Projects (Admin)' 
+                    : activeRole === 'Program' ? 'Projects (Program)' 
+                    : 'Projects';
+
   navGeneral.push({
-    title: "Projects",
+    title: projectLabel,
     url: "/projects",
     icon: Briefcase,
   });
@@ -124,7 +128,7 @@ export function AppSidebar({ role, devOverride, isLocked, ...props }: React.Comp
         ]
       },
       {
-        title: "Projects",
+        title: projectLabel,
         url: "/management/projects",
         icon: Briefcase,
       },

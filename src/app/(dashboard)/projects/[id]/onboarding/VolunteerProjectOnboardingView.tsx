@@ -42,7 +42,7 @@ export default function VolunteerProjectOnboardingView({ projectId }: { projectI
                 getUserTaskProgress()
             ]);
             
-            const app = apps.find(a => a.project_id === projectId && a.status === 'approved');
+            const app = apps.find(a => a.project_id === projectId && ['onboarding', 'pending', 'approved'].includes(a.status));
             setProject(proj);
             setApplication(app);
 

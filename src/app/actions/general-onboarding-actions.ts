@@ -377,6 +377,48 @@ export async function upsertUserTaskProgress(payload: Partial<TaskProgress>) {
         })
         .eq('auth_user_id', user.id);
 
+
+    // 4. Handle Project-Specific Completion
+    const { data: taskDetails } = await adminSupabase
+        .from('onboarding_tasks')
+        .select('*, onboarding_modules!inner(project_id)')
+        .eq('id', payload.task_id)
+        .single();
+    
+    if (taskDetails?.onboarding_modules?.project_id) {
+        const projectId = taskDetails.onboarding_modules.project_id;
+        
+        // Get total project tasks
+        const { count: projTotal } = await adminSupabase
+            .from('onboarding_tasks')
+            .select('*, onboarding_modules!inner(project_id)', { count: 'exact', head: true })
+            .eq('onboarding_modules.project_id', projectId);
+            
+        // Get completed project tasks
+        const { count: projComp } = await adminSupabase
+            .from('onboarding_task_progress')
+            .select('*, onboarding_tasks!inner(onboarding_modules!inner(project_id))', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('is_completed', true)
+            .eq('onboarding_tasks.onboarding_modules.project_id', projectId);
+            
+        if (projTotal && projComp && projComp >= projTotal) {
+            // Move application to 'pending' (Review Phase)
+            const { data: profile } = await adminSupabase.from('profiles').select('id').eq('auth_user_id', user.id).single();
+            if (profile) {
+                await adminSupabase
+                    .from('volunteer_applications')
+                    .update({ status: 'pending' })
+                    .eq('project_id', projectId)
+                    .eq('profile_id', profile.id)
+                    .eq('status', 'onboarding');
+                
+                revalidatePath("/projects");
+                revalidatePath("/management/projects");
+            }
+        }
+    }
+
     revalidatePath("/onboarding");
     revalidatePath("/admin");
     return data;

@@ -1,11 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getProjects, applyToProject, getMyApplications } from "@/app/actions/project-actions";
-import { Loader2, Briefcase, Calendar, Users, Building2, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { getProjects, applyToProject, getMyApplications, withdrawApplication } from "@/app/actions/project-actions";
+import { Loader2, Briefcase, Calendar, Users, Building2, CheckCircle2, XCircle, Clock, Undo2, Ban, ClipboardList, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogHeader, 
+    DialogTitle, 
+    DialogFooter, 
+    DialogDescription,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from "@/components/ui/select";
 
 export default function BrowseProjectsView({ isVolunteer }: { isVolunteer: boolean }) {
     const [projects, setProjects] = useState<any[]>([]);
@@ -13,6 +31,15 @@ export default function BrowseProjectsView({ isVolunteer }: { isVolunteer: boole
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("browse");
     const [applyingObj, setApplyingObj] = useState<Record<string, boolean>>({});
+    
+    // Withdrawal State
+    const [withdrawingApp, setWithdrawingApp] = useState<any>(null);
+    const [withdrawalFeedback, setWithdrawalFeedback] = useState("");
+    const [isWithdrawing, setIsWithdrawing] = useState(false);
+
+    // Screening State
+    const [screeningProject, setScreeningProject] = useState<any>(null);
+    const [screeningAnswers, setScreeningAnswers] = useState<string[]>([]);
 
     useEffect(() => {
         loadData();
@@ -34,16 +61,28 @@ export default function BrowseProjectsView({ isVolunteer }: { isVolunteer: boole
         }
     };
 
-    const handleApply = async (projectId: string) => {
+    const handleApply = async (projectId: string, answers: string[] = []) => {
         setApplyingObj(prev => ({ ...prev, [projectId]: true }));
         try {
-            await applyToProject(projectId);
+            await applyToProject(projectId, answers);
             toast.success("Application submitted successfully!");
+            setScreeningProject(null);
+            setScreeningAnswers([]);
             loadData(); // refresh lists
         } catch (error: any) {
             toast.error("Failed to apply", { description: error.message });
         } finally {
             setApplyingObj(prev => ({ ...prev, [projectId]: false }));
+        }
+    };
+
+    const initiateApply = (project: any) => {
+        const questions = project.screening_questions || [];
+        if (questions.length > 0) {
+            setScreeningProject(project);
+            setScreeningAnswers(new Array(questions.length).fill(""));
+        } else {
+            handleApply(project.id);
         }
     };
 
@@ -90,7 +129,7 @@ export default function BrowseProjectsView({ isVolunteer }: { isVolunteer: boole
                         <Button 
                             className="w-full font-bold"
                             disabled={applied || applyingObj[project.id]}
-                            onClick={() => handleApply(project.id)}
+                            onClick={() => initiateApply(project)}
                             variant={applied ? "secondary" : "default"}
                         >
                             {applyingObj[project.id] ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
@@ -106,31 +145,68 @@ export default function BrowseProjectsView({ isVolunteer }: { isVolunteer: boole
         );
     };
 
+    const handleWithdraw = async () => {
+        if (!withdrawingApp) return;
+        if (!withdrawalFeedback.trim()) {
+            toast.error("Please provide a small feedback before withdrawing");
+            return;
+        }
+
+        setIsWithdrawing(true);
+        try {
+            await withdrawApplication(withdrawingApp.id, withdrawalFeedback);
+            toast.success("Application withdrawn");
+            setWithdrawingApp(null);
+            setWithdrawalFeedback("");
+            loadData();
+        } catch (error: any) {
+            toast.error("Failed to withdraw", { description: error.message });
+        } finally {
+            setIsWithdrawing(false);
+        }
+    };
+
     const ApplicationCard = ({ app }: { app: any }) => {
         const p = app.project;
         if (!p) return null;
 
         const statusColors = {
-            pending: "bg-amber-100 text-amber-700 border-amber-200",
+            onboarding: "bg-indigo-100 text-indigo-700 border-indigo-200",
+            pending_screening: "bg-amber-100 text-amber-700 border-amber-200",
+            pending: "bg-blue-100 text-blue-700 border-blue-200",
             approved: "bg-emerald-100 text-emerald-700 border-emerald-200",
             rejected: "bg-rose-100 text-rose-700 border-rose-200",
             withdrawn: "bg-slate-100 text-slate-700 border-slate-200",
+            removed: "bg-zinc-100 text-zinc-700 border-zinc-200",
         }[app.status as string] || "bg-slate-100 text-slate-700";
 
+        const statusLabels = {
+            onboarding: "Onboarding In Progress",
+            pending_screening: "Screening Review",
+            pending: "Final Review",
+            approved: "Approved",
+            rejected: "Not Selected",
+            withdrawn: "Withdrawn",
+            removed: "Removed",
+        }[app.status as string] || app.status;
+
         const StatusIcon = {
-            pending: Clock,
+            onboarding: ClipboardList,
+            pending_screening: Clock,
+            pending: BookOpen,
             approved: CheckCircle2,
             rejected: XCircle,
-            withdrawn: XCircle,
+            withdrawn: Undo2,
+            removed: Ban,
         }[app.status as string] || Clock;
 
         return (
             <div className="flex flex-col p-5 border rounded-xl bg-white dark:bg-zinc-950 shadow-sm border-slate-200 dark:border-zinc-800">
                 <div className="flex justify-between items-start mb-2">
                     <h3 className="font-bold text-slate-900 dark:text-slate-100">{p.title}</h3>
-                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold capitalize ${statusColors}`}>
+                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold ${statusColors}`}>
                         <StatusIcon className="w-3.5 h-3.5" />
-                        {app.status}
+                        {statusLabels}
                     </div>
                 </div>
                 <div className="text-xs text-slate-500 mb-4">
@@ -144,10 +220,49 @@ export default function BrowseProjectsView({ isVolunteer }: { isVolunteer: boole
                     </div>
                 )}
 
-                {app.status === 'approved' && (
-                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800">
-                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold" onClick={() => window.location.href=`/projects/${app.project_id}/onboarding`}>
+                {app.status === 'onboarding' && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 flex flex-col gap-2">
+                        <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold" onClick={() => window.location.href=`/projects/${app.project_id}/onboarding`}>
                             Complete Project Onboarding
+                        </Button>
+                        <Button variant="outline" size="sm" className="w-full text-slate-500 hover:text-rose-600 hover:bg-rose-50 border-slate-200" onClick={() => setWithdrawingApp(app)}>
+                            Withdraw Application
+                        </Button>
+                    </div>
+                )}
+
+                {app.status === 'approved' && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 flex flex-col gap-2">
+                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold" onClick={() => window.location.href=`/projects/${app.project_id}/onboarding`}>
+                            View Project Tasks
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-slate-500 hover:text-rose-600 hover:bg-rose-50 border-slate-200" onClick={() => setWithdrawingApp(app)}>
+                            Withdraw Application
+                        </Button>
+                    </div>
+                )}
+
+                {app.status === 'pending_screening' && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 space-y-3">
+                        <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-800 font-medium">
+                            Your application is being screened by the project manager. If approved, you will move to the onboarding stage.
+                        </div>
+                        <Button variant="outline" size="sm" className="w-full text-slate-500 hover:text-rose-600 hover:bg-rose-50 border-slate-200" onClick={() => setWithdrawingApp(app)}>
+                            Withdraw Application
+                        </Button>
+                    </div>
+                )}
+                
+                {app.status === 'pending' && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 space-y-3">
+                        <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800 font-medium">
+                            Onboarding complete! Your application is now pending final review by the project manager.
+                        </div>
+                        <Button className="w-full bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold" onClick={() => window.location.href=`/projects/${app.project_id}/onboarding`}>
+                            View Project Tasks
+                        </Button>
+                        <Button variant="outline" size="sm" className="w-full text-slate-500 hover:text-rose-600 hover:bg-rose-50 border-slate-200" onClick={() => setWithdrawingApp(app)}>
+                            Withdraw Application
                         </Button>
                     </div>
                 )}
@@ -226,6 +341,125 @@ export default function BrowseProjectsView({ isVolunteer }: { isVolunteer: boole
                     )}
                 </div>
             )}
+
+            {/* Withdrawal Feedback Dialog */}
+            <Dialog open={!!withdrawingApp} onOpenChange={(open) => !open && setWithdrawingApp(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Withdraw Application</DialogTitle>
+                        <DialogDescription>
+                            We're sorry to see you go! Please let us know why you're withdrawing your application for <span className="font-bold text-slate-900">{withdrawingApp?.project?.title}</span>.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <Textarea 
+                            placeholder="Share your feedback here..." 
+                            value={withdrawalFeedback}
+                            onChange={(e) => setWithdrawalFeedback(e.target.value)}
+                            className="min-h-[100px]"
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setWithdrawingApp(null)}>Cancel</Button>
+                        <Button 
+                            variant="destructive" 
+                            disabled={isWithdrawing || !withdrawalFeedback.trim()} 
+                            onClick={handleWithdraw}
+                        >
+                            {isWithdrawing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Confirm Withdrawal
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Screening Questions Dialog */}
+            <Dialog open={!!screeningProject} onOpenChange={(open) => !open && setScreeningProject(null)}>
+                <DialogContent 
+                    showCloseButton={false}
+                    className="fixed inset-0 top-0 left-0 translate-x-0 translate-y-0 sm:max-w-none w-screen h-screen m-0 p-0 rounded-none overflow-y-auto border-none bg-slate-50 dark:bg-zinc-950 block custom-scrollbar"
+                >
+                    <DialogHeader className="bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-white/10 p-6 md:p-8 flex-shrink-0">
+                        <div className="max-w-3xl mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 rounded-lg bg-indigo-500 text-white shadow-lg shadow-indigo-500/20">
+                                    <ClipboardList className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <DialogTitle className="text-xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
+                                        Project Screening: {screeningProject?.title}
+                                    </DialogTitle>
+                                    <DialogDescription className="text-sm text-slate-500 font-medium">
+                                        Please provide the following information to help us evaluate your application.
+                                    </DialogDescription>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-10 w-10 bg-slate-100 dark:bg-zinc-800 rounded-lg" onClick={() => setScreeningProject(null)}>
+                                <XCircle className="w-6 h-6 text-slate-500" />
+                            </Button>
+                        </div>
+                    </DialogHeader>
+                    
+                    <div className="max-w-3xl mx-auto w-full p-6 md:p-12 space-y-10 pb-32">
+                        {screeningProject?.screening_criteria?.map((c: any, idx: number) => (
+                            <div key={idx} className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${idx * 100}ms` }}>
+                                <div className="flex items-start gap-4">
+                                    <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                                        {idx + 1}
+                                    </div>
+                                    <div className="space-y-4 flex-1">
+                                        <Label className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-snug">
+                                            {c.label}
+                                        </Label>
+                                        
+                                        {c.format === 'text' ? (
+                                            <Input 
+                                                placeholder="Type your response here..."
+                                                className="h-12 border-slate-200 focus:border-indigo-500 transition-colors text-base"
+                                                value={screeningAnswers[idx] || ""}
+                                                onChange={(e) => {
+                                                    const newAnswers = [...screeningAnswers];
+                                                    newAnswers[idx] = e.target.value;
+                                                    setScreeningAnswers(newAnswers);
+                                                }}
+                                            />
+                                        ) : (
+                                            <Select 
+                                                value={screeningAnswers[idx] || ""} 
+                                                onValueChange={(val) => {
+                                                    const newAnswers = [...screeningAnswers];
+                                                    newAnswers[idx] = val;
+                                                    setScreeningAnswers(newAnswers);
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-12 w-48 border-slate-200 font-bold text-slate-700">
+                                                    <SelectValue placeholder="Select Option" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Yes">Yes</SelectItem>
+                                                    <SelectItem value="No">No</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        <div className="pt-8 border-t border-slate-200 flex justify-end gap-3">
+                            <Button variant="ghost" className="px-8 h-12 font-bold" onClick={() => setScreeningProject(null)}>Discard</Button>
+                            <Button 
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-10 h-12 shadow-lg shadow-indigo-600/20 rounded-xl"
+                                disabled={applyingObj[screeningProject?.id] || screeningAnswers.some(a => !a?.trim())}
+                                onClick={() => handleApply(screeningProject.id, screeningAnswers)}
+                            >
+                                {applyingObj[screeningProject?.id] && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                Submit Application
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

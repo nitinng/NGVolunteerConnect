@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getProjects, upsertProject, deleteProject } from "@/app/actions/project-actions";
+import { getProjects, upsertProject, deleteProject, duplicateProject } from "@/app/actions/project-actions";
 import { getDepartments } from "@/app/actions/general-onboarding-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,10 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Briefcase, Plus, Users, Search, Edit2, Trash2, Settings } from "lucide-react";
+import { 
+    Briefcase, Plus, Users, Search, Edit2, Trash2, Settings, 
+    CheckCircle2, XCircle, Target, ChevronDown, ChevronUp, Copy, Loader2
+} from "lucide-react";
 import Link from "next/link";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUserContext } from "@/contexts/user-context";
@@ -64,6 +67,11 @@ export default function ProjectsManagementView() {
                 volunteers_needed: editingProject.volunteers_needed || 1,
                 impact_tier: editingProject.impact_tier || "Community",
                 status: editingProject.status || "draft",
+                screening_criteria: editingProject.screening_criteria || [],
+                screening_cutoff_score: editingProject.screening_cutoff_score || 75,
+                screening_questions: (editingProject.screening_criteria || [])
+                    .filter((c: any) => c.type === 'manual')
+                    .map((c: any) => c.label)
             });
             toast.success("Project saved successfully");
             setEditingProject(null);
@@ -88,6 +96,18 @@ export default function ProjectsManagementView() {
                 },
             },
         });
+    };
+    const handleDuplicate = async (id: string) => {
+        try {
+            toast.loading("Duplicating project...");
+            await duplicateProject(id);
+            toast.dismiss();
+            toast.success("Project duplicated successfully");
+            loadData();
+        } catch (e: any) {
+            toast.dismiss();
+            toast.error("Error duplicating project", { description: e.message });
+        }
     };
 
     const filtered = projects.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -186,6 +206,149 @@ export default function ProjectsManagementView() {
                                 </Select>
                             </div>
                         </div>
+
+                        {/* Screening Setup Section */}
+                        <div className="mt-8 pt-8 border-t border-indigo-100">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Target className="w-5 h-5 text-indigo-600" />
+                                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Screening & Auto-Approval Setup</h3>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                                <div className="p-4 bg-white border border-indigo-100 rounded-xl shadow-sm">
+                                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Cutoff Score (%)</label>
+                                    <div className="flex items-center gap-3">
+                                        <Input 
+                                            type="number" 
+                                            min="0" max="100" 
+                                            value={editingProject.screening_cutoff_score || 75} 
+                                            onChange={e => setEditingProject({ ...editingProject, screening_cutoff_score: parseInt(e.target.value) })}
+                                            className="font-bold text-lg text-indigo-600"
+                                        />
+                                        <div className="text-[10px] text-slate-400 font-medium leading-tight">
+                                            Volunteers scoring above this will move to Stage 2: Onboarding.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="md:col-span-2 p-4 bg-indigo-50/50 border border-dashed border-indigo-200 rounded-xl flex items-center gap-4">
+                                    <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                                        <Target className="w-5 h-5" />
+                                    </div>
+                                    <div className="text-xs text-indigo-800">
+                                        <p className="font-bold mb-1">Total Criteria Weight: { (editingProject.screening_criteria || []).reduce((acc: number, c: any) => acc + (c.weight || 0), 0) }%</p>
+                                        <p className="opacity-70">Ensure your weights add up to 100% for accurate scoring.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="text-xs font-bold text-slate-700">Evaluation Criteria</label>
+                                    <div className="flex gap-2">
+                                        <Button 
+                                            variant="outline" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider gap-1 border-emerald-200 text-emerald-600 hover:bg-emerald-50"
+                                            onClick={() => {
+                                                const crit = editingProject.screening_criteria || [];
+                                                setEditingProject({
+                                                    ...editingProject,
+                                                    screening_criteria: [...crit, { type: 'manual', format: 'dropdown', label: 'New Question?', expectedValue: 'Yes', weight: 25 }]
+                                                });
+                                            }}
+                                        >
+                                            <Plus className="w-3 h-3" /> Add Screening Question
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                { (editingProject.screening_criteria || []).map((c: any, idx: number) => (
+                                    <div key={idx} className="flex flex-col md:flex-row gap-3 p-4 bg-white border rounded-xl items-start md:items-center group relative animate-in slide-in-from-left-2 transition-all shadow-sm hover:shadow-md">
+                                        <div className={`p-1.5 rounded-lg ${c.type === 'profile' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                            {c.type === 'profile' ? <Users className="w-4 h-4" /> : <Settings className="w-4 h-4" />}
+                                        </div>
+                                        
+                                        <div className="flex-1 space-y-2 md:space-y-0 md:flex md:items-center md:gap-3 w-full">
+                                            <Input 
+                                                value={c.label} 
+                                                onChange={e => {
+                                                    const crit = [...editingProject.screening_criteria];
+                                                    crit[idx].label = e.target.value;
+                                                    setEditingProject({ ...editingProject, screening_criteria: crit });
+                                                }}
+                                                placeholder="Screening Question"
+                                                className="h-8 text-sm font-semibold"
+                                            />
+                                            
+                                            <div className="flex flex-col gap-2 w-full md:w-auto">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase">Format:</span>
+                                                <Select 
+                                                    value={c.format || 'dropdown'} 
+                                                    onValueChange={v => {
+                                                        const crit = [...editingProject.screening_criteria];
+                                                        crit[idx].format = v;
+                                                        // Reset expected value if switching to text
+                                                        if (v === 'text') crit[idx].expectedValue = 'Manual Review';
+                                                        setEditingProject({ ...editingProject, screening_criteria: crit });
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="h-8 w-28 text-[10px] font-bold">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="dropdown">Dropdown</SelectItem>
+                                                        <SelectItem value="text">Short Answer</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 w-full md:w-auto">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase">{c.format === 'text' ? 'Hint:' : 'Expected:'}</span>
+                                                <Input 
+                                                    value={c.expectedValue} 
+                                                    disabled={c.format === 'text'}
+                                                    onChange={e => {
+                                                        const crit = [...editingProject.screening_criteria];
+                                                        crit[idx].expectedValue = e.target.value;
+                                                        setEditingProject({ ...editingProject, screening_criteria: crit });
+                                                    }}
+                                                    placeholder={c.format === 'text' ? 'Manual Review' : 'Expected'}
+                                                    className="h-8 text-xs w-24"
+                                                />
+                                            </div>
+
+                                            <div className="flex items-center gap-2 w-full md:w-auto">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase text-right md:w-16">Weight %</span>
+                                                <Input 
+                                                    type="number"
+                                                    value={c.weight} 
+                                                    onChange={e => {
+                                                        const crit = [...editingProject.screening_criteria];
+                                                        crit[idx].weight = parseInt(e.target.value);
+                                                        setEditingProject({ ...editingProject, screening_criteria: crit });
+                                                    }}
+                                                    className="h-8 text-xs w-16 font-bold"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <Button 
+                                            variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-rose-600 transition-colors"
+                                            onClick={() => {
+                                                const crit = editingProject.screening_criteria.filter((_: any, i: number) => i !== idx);
+                                                setEditingProject({ ...editingProject, screening_criteria: crit });
+                                            }}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+
+                                {(!editingProject.screening_criteria || editingProject.screening_criteria.length === 0) && (
+                                    <div className="py-8 text-center border-2 border-dashed rounded-xl bg-slate-50/50">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No screening criteria configured. All volunteers will move to Stage 2 by default.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </CardContent>
                     <CardFooter className="gap-2">
                         <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700">Save Project</Button>
@@ -231,6 +394,9 @@ export default function ProjectsManagementView() {
                                             <>
                                                 <Button variant="ghost" size="icon" onClick={() => setEditingProject({ ...proj, department_id: proj.department?.id })}>
                                                     <Edit2 className="w-4 h-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" title="Duplicate Project" onClick={() => handleDuplicate(proj.id)}>
+                                                    <Copy className="w-4 h-4 text-indigo-500" />
                                                 </Button>
                                                 <Button variant="ghost" size="icon" className="text-rose-500 mb:text-rose-600" onClick={() => handleDelete(proj.id)}>
                                                     <Trash2 className="w-4 h-4" />

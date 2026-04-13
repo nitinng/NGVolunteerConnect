@@ -29,15 +29,22 @@ export default async function OnboardingPage() {
     const user = await currentUser();
     const publicMetadata = user?.publicMetadata || {};
 
-    const [profile, dbCategories, loadedModules, loadedTasks, loadedBlocks, loadedProgress, isLocked] = await Promise.all([
+    const [profile, dbCategories, loadedModules, loadedTasks, loadedBlocks, loadedProgress, isLocked, apps] = await Promise.all([
         getMyProfile(),
         getSkillCategories(),
         getGeneralOnboardingModules(),
         getGeneralOnboardingTasks(),
         getAllContentBlocks(),
         getUserTaskProgress(),
-        getMyProfile().then(p => p ? isOnboardingLockedForUser(p.id) : false)
+        getMyProfile().then(p => p ? isOnboardingLockedForUser(p.id) : false),
+        import("@/app/actions/project-actions").then(m => m.getMyApplications())
     ]);
+
+    // Fetch all project-specific modules for applied projects
+    const appliedApps = apps.filter(a => ['pending_screening', 'onboarding', 'pending', 'approved'].includes(a.status));
+    const projectModulePromises = appliedApps.map(a => getGeneralOnboardingModules(a.project_id));
+    const projectModulesNested = await Promise.all(projectModulePromises);
+    const projectModules = projectModulesNested.flat();
 
     const sortedModules = loadedModules.sort((a,b) => a.order_index - b.order_index);
     const categoryKeys = dbCategories.map(c => c.key);
@@ -95,6 +102,8 @@ export default async function OnboardingPage() {
             serverStats={stats}
             serverCompletion={completion}
             isLocked={isLocked}
+            appliedProjects={appliedApps}
+            projectModules={projectModules}
         />
     )
 }

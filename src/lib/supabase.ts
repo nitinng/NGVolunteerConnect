@@ -182,6 +182,8 @@ export interface Project {
     end_date: string | null;
     approval_mode: ApprovalMode;
     screening_questions: string[];
+    screening_criteria: any[] | null;
+    screening_cutoff_score: number | null;
     impact_tier: ImpactTier;
     status: ProjectStatus;
     created_at: string;
@@ -192,6 +194,8 @@ export interface VolunteerApplication {
     project_id: string;
     profile_id: string;
     screening_answers: string[];
+    screening_score: number | null;
+    screening_results: any | null;
     status: ApplicationStatus;
     rejection_reason: string | null;
     applied_at: string;
